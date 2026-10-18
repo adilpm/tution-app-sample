@@ -2,10 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 
-const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
-fs.mkdirSync(dataDir, { recursive: true });
+// DB_PATH (full file path) wins; otherwise <DATA_DIR or ./data>/tuition.db.
+const dbPath = process.env.DB_PATH
+  || path.join(process.env.DATA_DIR || path.join(__dirname, 'data'), 'tuition.db');
+const dataDir = path.dirname(dbPath);
+fs.mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 
-const db = new Database(path.join(dataDir, 'tuition.db'));
+const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('busy_timeout = 5000');

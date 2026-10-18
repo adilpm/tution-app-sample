@@ -1,9 +1,8 @@
-const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const {
-  db, getSections, getSetting, setSetting,
+  db, dataDir, getSections, getSetting, setSetting,
 } = require('../db');
 const { requireAdmin, hashPassword } = require('../lib/auth');
 const {
@@ -208,10 +207,15 @@ router.post('/promote', (req, res) => {
 // ---------- Backup ----------
 
 router.get('/backup', async (req, res, next) => {
-  const file = path.join(os.tmpdir(), `tuition-backup-${Date.now()}.db`);
+  // Written next to the database, not the shared /tmp, so other users on the
+  // server can't read the copy.
+  const file = path.join(dataDir, `download-backup-${Date.now()}.db`);
   try {
     await db.backup(file);
-    res.download(file, `tuition-backup-${today()}.db`, () => fs.unlink(file, () => {}));
+    res.download(file, `tuition-backup-${today()}.db`, (err) => {
+      fs.unlink(file, () => {});
+      if (err && !res.headersSent) next(err);
+    });
   } catch (err) {
     fs.unlink(file, () => {});
     next(err);
