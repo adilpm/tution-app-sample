@@ -1,0 +1,59 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>Payments</h1>
+</div>
+
+<div class="chips">
+  <% for (const [key, name] of ranges) { %>
+    <a class="chip <%= period.range === key ? 'active' : '' %>" href="/payments?range=<%= key %>"><%= name %></a>
+  <% } %>
+  <% if (period.range === 'custom') { %><span class="chip active">Custom</span><% } %>
+</div>
+
+<details class="card" style="padding:12px 16px" <%= period.range === 'custom' ? 'open' : '' %>>
+  <summary class="small">Custom dates</summary>
+  <form method="get" action="/payments" class="inline">
+    <div><label for="from">From</label><input type="date" id="from" name="from" value="<%= period.from %>" max="<%= dates.today() %>" required></div>
+    <div><label for="to">To</label><input type="date" id="to" name="to" value="<%= period.to %>" max="<%= dates.today() %>" required></div>
+    <button class="btn primary" type="submit">Apply</button>
+  </form>
+</details>
+
+<div class="stats">
+  <div class="stat hero">
+    <div class="label">Collected · <%= periodLabel %></div>
+    <div class="value"><%= fmt.money(totals.all) %></div>
+    <div class="hint"><%= totals.count %> receipts</div>
+  </div>
+  <div class="stat"><div class="label">Cash</div><div class="value"><%= fmt.money(totals.cash) %></div></div>
+  <div class="stat"><div class="label">UPI</div><div class="value"><%= fmt.money(totals.upi) %></div></div>
+</div>
+
+<div class="btn-row" style="margin-bottom:16px">
+  <a class="btn sm" href="/payments.pdf?<%= exportQuery %>"><%- icon('download') %>PDF</a>
+  <a class="btn sm" href="/payments.xlsx?<%= exportQuery %>"><%- icon('download') %>Excel</a>
+  <a class="btn sm" href="/payments.csv?<%= exportQuery %>"><%- icon('download') %>CSV</a>
+</div>
+
+<div class="card flush">
+  <% if (!payments.length) { %>
+    <div class="empty">No payments for <%= periodLabel %>.</div>
+  <% } else { %>
+  <ul class="list">
+    <% for (const p of payments) { %>
+      <li><a class="row" href="/payments/<%= p.id %>">
+        <div class="main">
+          <div class="title <%= p.voided ? 'strike' : '' %>"><%= p.student_name %> <span class="muted small" style="font-weight:400">· <%= p.label %></span>
+            <% if (p.voided) { %><span class="badge bad">Void</span><% } %></div>
+          <div class="meta"><%= dates.dateLabel(p.paid_on) %> · <%= p.receipt_no %> · <%= p.monthsText %></div>
+        </div>
+        <div class="end">
+          <b class="<%= p.voided ? 'strike muted' : '' %>"><%= fmt.money(p.amount) %></b>
+          <div class="meta"><%= p.method %></div>
+        </div>
+      </a></li>
+    <% } %>
+  </ul>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

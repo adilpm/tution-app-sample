@@ -1,0 +1,29 @@
+<%- include('partials/header') %>
+<div class="page-head"><a class="back" href="/more" aria-label="Back"><%- icon('back') %></a><h1>Year-end promotion</h1></div>
+
+<div class="card" style="max-width:620px">
+  <p style="margin-top:0">Run this once when the new academic year starts (usually June). It will:</p>
+  <ul>
+    <% for (const p of preview) { %>
+      <li><b><%= p.count %></b> active students in <b><%= p.grade %>th</b> →
+        <%= p.to ? `move to ${p.to}th (same division)` : 'marked as passed out (billing stops the month before)' %></li>
+    <% } %>
+  </ul>
+  <p class="muted small">Old fee months, receipts and attendance stay as they are. Pending fees from the previous year stay pending.
+    Students who have left are not touched.</p>
+  <% if (lastPromotion) { %><p class="small">Last promotion: <b><%= dates.monthLabel(lastPromotion) %></b></p><% } %>
+
+  <% if (error) { %><div class="flash error"><%= error %></div><% } %>
+  <form method="post" action="/promote">
+    <div class="field">
+      <label for="effective_month">New academic year starts</label>
+      <input type="month" id="effective_month" name="effective_month" value="<%= month %>" required>
+    </div>
+    <div class="field">
+      <label for="confirm">Type PROMOTE to confirm</label>
+      <input type="text" id="confirm" name="confirm" autocomplete="off" autocapitalize="characters" required>
+    </div>
+    <button class="btn primary block" type="submit">Promote students</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,66 @@
+<%- include('../partials/header') %>
+<%
+  const qs = (over) => {
+    const p = { q, section, status: status === 'active' ? null : status, filter: onlyPending ? 'pending' : null, ...over };
+    const s = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    return `/students${s ? '?' + s : ''}`;
+  };
+  const totalPending = students.reduce((n, s) => n + s.pending, 0);
+%>
+<div class="page-head">
+  <h1>Students</h1>
+  <a class="btn primary sm" href="/students/new<%= section ? '?section=' + section : '' %>"><%- icon('plus') %>Add</a>
+</div>
+
+<form method="get" action="/students" class="search-box">
+  <%- icon('search') %>
+  <input type="search" name="q" value="<%= q %>" placeholder="Search name, parent or phone" aria-label="Search students">
+  <% if (section) { %><input type="hidden" name="section" value="<%= section %>"><% } %>
+  <% if (status !== 'active') { %><input type="hidden" name="status" value="<%= status %>"><% } %>
+  <% if (onlyPending) { %><input type="hidden" name="filter" value="pending"><% } %>
+</form>
+
+<div class="chips">
+  <a class="chip <%= !section ? 'active' : '' %>" href="<%= qs({ section: null }) %>">All</a>
+  <% for (const s of sections) { %>
+    <a class="chip <%= section === s.id ? 'active' : '' %>" href="<%= qs({ section: s.id }) %>"><%= s.label %></a>
+  <% } %>
+</div>
+<div class="chips">
+  <a class="chip <%= onlyPending ? 'active' : '' %>" href="<%= qs({ filter: onlyPending ? null : 'pending' }) %>">Fees pending</a>
+  <a class="chip <%= status === 'active' ? 'active' : '' %>" href="<%= qs({ status: null }) %>">Active</a>
+  <a class="chip <%= status === 'left' ? 'active' : '' %>" href="<%= qs({ status: 'left' }) %>">Left</a>
+  <a class="chip <%= status === 'passed' ? 'active' : '' %>" href="<%= qs({ status: 'passed' }) %>">Passed out</a>
+  <a class="chip <%= status === 'all' ? 'active' : '' %>" href="<%= qs({ status: 'all' }) %>">Everyone</a>
+</div>
+
+<div class="card flush">
+  <div class="row" style="min-height:0; padding-top:12px; padding-bottom:12px">
+    <div class="main muted small"><%= students.length %> student<%= students.length === 1 ? '' : 's' %></div>
+    <% if (totalPending) { %><div class="end small">Pending <b class="bad-text"><%= fmt.money(totalPending) %></b></div><% } %>
+  </div>
+  <% if (!students.length) { %>
+    <div class="empty">No students found.<% if (!q && !section) { %> <a href="/students/new">Add the first student</a>.<% } %></div>
+  <% } else { %>
+  <ul class="list">
+    <% for (const s of students) { %>
+      <li><a class="row" href="/students/<%= s.id %>">
+        <div class="avatar"><%= fmt.initials(s.name) %></div>
+        <div class="main">
+          <div class="title"><%= s.name %></div>
+          <div class="meta"><%= s.label %><%= s.parent_name ? ' · ' + s.parent_name : '' %><%= s.status !== 'active' ? ' · ' + (s.status === 'left' ? 'Left' : 'Passed out') : '' %></div>
+        </div>
+        <div class="end">
+          <% if (s.pending > 0) { %>
+            <b class="bad-text"><%= fmt.money(s.pending) %></b>
+            <div class="meta"><%= s.unpaid %> month<%= s.unpaid === 1 ? '' : 's' %></div>
+          <% } else { %>
+            <span class="badge good">Paid</span>
+          <% } %>
+        </div>
+      </a></li>
+    <% } %>
+  </ul>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

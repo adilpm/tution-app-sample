@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2453b8">
+<title><%= title %> · <%= settings.center_name %></title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><%= settings.center_name %></a>
+    <% if (user) {
+      const items = user.role === 'admin'
+        ? [['/', 'home', 'Home'], ['/students', 'users', 'Students'], ['/attendance', 'attendance', 'Attendance'], ['/payments', 'receipt', 'Payments'], ['/more', 'menu', 'More']]
+        : [['/attendance', 'attendance', 'Attendance'], ['/more', 'menu', 'More']];
+      const moreSections = ['/more', '/settings', '/users', '/promote', '/account'];
+      const isActive = (href) => href === '/' ? path === '/'
+        : href === '/more' ? moreSections.some((p) => path.startsWith(p))
+        : path.startsWith(href);
+    %>
+    <nav class="nav" aria-label="Main">
+      <% for (const [href, ic, label] of items) { %>
+        <a href="<%= href %>" class="<%= isActive(href) ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span></a>
+      <% } %>
+    </nav>
+    <span class="spacer"></span>
+    <span class="who"><%= user.name %></span>
+    <% } %>
+  </div>
+</header>
+<main>
+<% if (flash) { %><div class="flash <%= flash.type %>" role="status"><%= flash.message %></div><% } %>

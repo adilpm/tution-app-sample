@@ -1,0 +1,113 @@
+<%- include('../partials/header') %>
+<% const attPct = att.total ? Math.round(att.present / att.total * 100) : null; %>
+<div class="page-head">
+  <a class="back" href="/students" aria-label="Back"><%- icon('back') %></a>
+  <h1>Student</h1>
+  <a class="btn sm" href="/students/<%= student.id %>/edit"><%- icon('edit') %>Edit</a>
+</div>
+
+<div class="grid main-side">
+  <div>
+    <div class="card">
+      <div class="profile-head">
+        <div class="avatar"><%= fmt.initials(student.name) %></div>
+        <div style="min-width:0">
+          <h1 style="font-size:1.25rem"><%= student.name %></h1>
+          <div class="muted">Class <%= label %>
+            <% if (student.status === 'left') { %><span class="badge warn">Left</span><% } %>
+            <% if (student.status === 'passed') { %><span class="badge">Passed out</span><% } %>
+          </div>
+        </div>
+      </div>
+
+      <div class="pending-box <%= ledger.pending ? 'due' : '' %>">
+        <% if (ledger.pending) { %>
+          <div class="small">Pending fees</div>
+          <div class="big"><%= fmt.money(ledger.pending) %></div>
+          <div class="small"><%= ledger.unpaidMonths.length %> month<%= ledger.unpaidMonths.length === 1 ? '' : 's' %>: <%= dates.monthsSummary(ledger.unpaidMonths) %></div>
+        <% } else { %>
+          <div class="small">Pending fees</div>
+          <div class="big">₹0</div>
+          <div class="small">All fees paid<%= ledger.advance ? ' · ' + fmt.money(ledger.advance) + ' paid in advance' : '' %></div>
+        <% } %>
+      </div>
+
+      <div class="btn-row" style="margin-top:14px">
+        <a class="btn primary big" href="/collect/<%= student.id %>"><%- icon('rupee') %>Collect fee</a>
+        <% if (reminder) { %><a class="btn big" href="<%= reminder %>" target="_blank" rel="noopener"><%- icon('chat') %>Send reminder</a><% } %>
+      </div>
+
+      <dl class="kv">
+        <dt>Parent</dt><dd><%= student.parent_name || '—' %></dd>
+        <dt>Phone</dt><dd><% if (student.phone) { %><a href="tel:<%= student.phone.replace(/\s/g, '') %>"><%= student.phone %></a><% } else { %>—<% } %></dd>
+        <dt>Monthly fee</dt><dd><%= fmt.money(fee) %></dd>
+        <dt>Joined</dt><dd><%= dates.dateLabel(student.join_date) %> <span class="muted small">(billed from <%= dates.monthLabel(student.billing_start) %>)</span></dd>
+        <% if (student.billing_end) { %><dt>Billed until</dt><dd><%= dates.monthLabel(student.billing_end) %></dd><% } %>
+        <% if (student.notes) { %><dt>Notes</dt><dd><%= student.notes %></dd><% } %>
+      </dl>
+    </div>
+
+    <div class="card flush">
+      <h2>Payment receipts</h2>
+      <% if (!payments.length) { %>
+        <div class="empty">No payments yet.</div>
+      <% } else { %>
+      <ul class="list" style="margin-top:12px">
+        <% for (const p of payments) { %>
+          <li class="row">
+            <a class="main" href="/payments/<%= p.id %>" style="color:inherit">
+              <div class="title <%= p.voided ? 'strike' : '' %>"><%= fmt.money(p.amount) %> <span class="muted small" style="font-weight:400">· <%= p.method %></span>
+                <% if (p.voided) { %><span class="badge bad">Void</span><% } %></div>
+              <div class="meta"><%= p.receipt_no %> · <%= dates.dateLabel(p.paid_on) %> · <%= p.months %></div>
+            </a>
+            <a class="btn sm" href="/payments/<%= p.id %>/pdf?download=1" aria-label="Download receipt <%= p.receipt_no %>"><%- icon('download') %>PDF</a>
+          </li>
+        <% } %>
+      </ul>
+      <% } %>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>Fee months</h2>
+      <% if (!months.length) { %>
+        <div class="muted small">No billed months yet (billing starts <%= dates.monthLabel(student.billing_start) %>).</div>
+      <% } else { %>
+      <div class="month-grid">
+        <% for (const m of months) { const cls = m.due === 0 ? '' : m.paid > 0 ? 'partial' : 'unpaid'; %>
+          <div class="month-cell <%= cls %>">
+            <b><%= dates.monthLabel(m.month) %></b>
+            <%= m.due === 0 ? 'Paid' : m.paid > 0 ? fmt.money(m.due) + ' due' : 'Unpaid' %>
+          </div>
+        <% } %>
+      </div>
+      <% } %>
+    </div>
+
+    <div class="card">
+      <h2>Attendance</h2>
+      <div class="stats" style="margin-bottom:12px">
+        <div class="stat" style="box-shadow:none; background:var(--bg)">
+          <div class="label">Overall</div>
+          <div class="value"><%= attPct === null ? '—' : attPct + '%' %></div>
+          <div class="hint"><%= att.present %> / <%= att.total %> days</div>
+        </div>
+        <div class="stat" style="box-shadow:none; background:var(--bg)">
+          <div class="label">This month</div>
+          <div class="value"><%= att.monthTotal ? Math.round(att.monthPresent / att.monthTotal * 100) + '%' : '—' %></div>
+          <div class="hint"><%= att.monthPresent %> / <%= att.monthTotal %> days</div>
+        </div>
+      </div>
+      <% if (absences.length) { %>
+        <div class="small muted" style="margin-bottom:6px">Recent absences</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px">
+          <% for (const d of absences) { %><span class="badge bad"><%= dates.dateLabel(d) %></span><% } %>
+        </div>
+      <% } else if (att.total) { %>
+        <div class="small good-text">No absences recorded.</div>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('../partials/footer') %>

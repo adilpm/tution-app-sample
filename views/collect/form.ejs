@@ -1,0 +1,64 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <a class="back" href="/collect" aria-label="Back"><%- icon('back') %></a>
+  <h1>Collect fee</h1>
+</div>
+
+<div class="card" style="max-width:560px">
+  <a class="row" href="/students/<%= student.id %>" style="padding:0 0 12px; min-height:0; color:inherit">
+    <div class="avatar"><%= fmt.initials(student.name) %></div>
+    <div class="main">
+      <div class="title"><%= student.name %></div>
+      <div class="meta">Class <%= label %> · Fee <%= fmt.money(fee) %>/month</div>
+    </div>
+  </a>
+  <div class="pending-box <%= ledger.pending ? 'due' : '' %>" style="margin-top:0">
+    <% if (ledger.pending) { %>
+      <div class="small">Pending</div>
+      <div class="big"><%= fmt.money(ledger.pending) %></div>
+      <div class="small"><%= dates.monthsSummary(ledger.unpaidMonths) %></div>
+    <% } else { %>
+      <div class="small">Nothing pending</div>
+      <div class="small">A payment now will be counted as advance for the coming month(s).</div>
+    <% } %>
+  </div>
+
+  <% if (error) { %><div class="flash error" style="margin-top:14px"><%= error %></div><% } %>
+
+  <form method="post" action="/collect/<%= student.id %>" style="margin-top:16px">
+    <div class="field">
+      <label for="amount">Amount (₹)</label>
+      <input class="amount-input" type="text" id="amount" name="amount" value="<%= form.amount %>" inputmode="numeric" pattern="[0-9,]*" required autocomplete="off">
+      <div class="quick-amounts">
+        <% const quick = [...new Set([ledger.pending, fee, fee * 2, fee * 3].filter((a) => a > 0))]; %>
+        <% for (const a of quick) { %>
+          <button class="btn sm" type="button" data-amount="<%= a %>"><%= a === ledger.pending ? 'Full due ' : '' %><%= fmt.money(a) %></button>
+        <% } %>
+      </div>
+      <div class="help">Paid amount is applied to the oldest unpaid month first.</div>
+    </div>
+
+    <div class="field">
+      <label>Payment method</label>
+      <div class="segmented">
+        <label><input type="radio" name="method" value="Cash" <%= form.method !== 'UPI' ? 'checked' : '' %>><span>Cash</span></label>
+        <label><input type="radio" name="method" value="UPI" <%= form.method === 'UPI' ? 'checked' : '' %>><span>UPI</span></label>
+      </div>
+    </div>
+
+    <details <%= form.note || form.paid_on !== dates.today() ? 'open' : '' %>>
+      <summary>Date &amp; note</summary>
+      <div class="field">
+        <label for="paid_on">Payment date</label>
+        <input type="date" id="paid_on" name="paid_on" value="<%= form.paid_on %>" max="<%= dates.today() %>" required>
+      </div>
+      <div class="field">
+        <label for="note">Note (optional)</label>
+        <input type="text" id="note" name="note" value="<%= form.note %>" maxlength="300" placeholder="e.g. UPI ref no.">
+      </div>
+    </details>
+
+    <button class="btn good block big" type="submit" style="margin-top:8px">Save payment &amp; get receipt</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

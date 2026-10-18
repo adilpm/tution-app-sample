@@ -1,0 +1,32 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1>Collect fee</h1></div>
+
+<div class="search-box">
+  <%- icon('search') %>
+  <input type="search" id="student-search" placeholder="Type student name, class (9B) or phone" autocomplete="off" autofocus aria-label="Find student">
+</div>
+
+<div class="card flush">
+  <% if (!list.length) { %>
+    <div class="empty">No students yet. <a href="/students/new">Add a student</a> first.</div>
+  <% } else { %>
+  <ul class="list">
+    <% for (const s of list) { %>
+      <li data-search="<%= (s.name + ' ' + s.label + ' ' + s.parent + ' ' + s.phone.replace(/\D/g, '')).toLowerCase() %>">
+        <a class="row" href="/collect/<%= s.id %>">
+          <div class="avatar"><%= fmt.initials(s.name) %></div>
+          <div class="main">
+            <div class="title"><%= s.name %></div>
+            <div class="meta"><%= s.label %><%= s.parent ? ' · ' + s.parent : '' %><%= s.active ? '' : ' · Left' %></div>
+          </div>
+          <div class="end">
+            <% if (s.pending > 0) { %><b class="bad-text"><%= fmt.money(s.pending) %></b><% } else { %><span class="badge good">Paid</span><% } %>
+          </div>
+        </a>
+      </li>
+    <% } %>
+  </ul>
+  <div class="empty" id="no-match" hidden>No matching student.</div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

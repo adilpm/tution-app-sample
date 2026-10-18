@@ -1,0 +1,7 @@
+</main>
+<% if (user && user.role === 'admin' && !path.startsWith('/collect') && !/^\/attendance\/\d+$/.test(path)) { %>
+<a class="fab" href="/collect"><%- icon('rupee') %>Collect fee</a>
+<% } %>
+<script src="/app.js?v=1"></script>
+</body>
+</html>

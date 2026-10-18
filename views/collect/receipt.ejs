@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+<% const pdfUrl = '/payments/' + payment.id + '/pdf'; const filename = payment.receipt_no + '.pdf'; %>
+<div class="page-head">
+  <a class="back" href="/students/<%= student.id %>" aria-label="Back"><%- icon('back') %></a>
+  <h1>Receipt</h1>
+</div>
+
+<div class="card receipt-card" style="max-width:560px">
+  <% if (payment.voided) { %>
+    <div class="void-banner">VOID — <%= payment.void_reason %><br><span class="small" style="font-weight:400">by <%= payment.voided_by_name || '—' %> on <%= dates.dateLabel(payment.voided_at) %></span></div>
+  <% } else if (isNew) { %>
+    <div class="tick"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></div>
+    <div class="muted">Payment saved</div>
+  <% } %>
+  <div class="amount <%= payment.voided ? 'strike muted' : '' %>"><%= fmt.money(payment.amount) %></div>
+  <div class="muted"><%= student.name %> · Class <%= label %></div>
+
+  <dl class="kv">
+    <dt>Receipt no.</dt><dd><b><%= payment.receipt_no %></b></dd>
+    <dt>Date</dt><dd><%= dates.dateLabel(payment.paid_on) %></dd>
+    <dt>Method</dt><dd><%= payment.method %></dd>
+    <dt>For</dt><dd><% for (const m of months) { %><div><%= dates.monthLabel(m.month) %> <span class="muted">· <%= fmt.money(m.amount) %></span></div><% } %></dd>
+    <% if (payment.note) { %><dt>Note</dt><dd><%= payment.note %></dd><% } %>
+    <dt>Collected by</dt><dd><%= payment.collected_by_name || '—' %></dd>
+    <dt>Still pending</dt><dd class="<%= ledger.pending ? 'bad-text' : 'good-text' %>"><b><%= fmt.money(ledger.pending) %></b></dd>
+  </dl>
+
+  <div class="btn-row" style="margin-top:20px">
+    <a class="btn primary big" href="<%= pdfUrl %>?download=1"><%- icon('download') %>Download PDF</a>
+    <button class="btn big" type="button" data-share-pdf="<%= pdfUrl %>" data-filename="<%= filename %>" hidden><%- icon('share') %>Share PDF</button>
+  </div>
+  <div class="btn-row" style="margin-top:10px">
+    <% if (whatsapp) { %><a class="btn" href="<%= whatsapp %>" target="_blank" rel="noopener"><%- icon('chat') %>WhatsApp message</a><% } %>
+    <a class="btn" href="<%= pdfUrl %>" target="_blank" rel="noopener">View PDF</a>
+  </div>
+</div>
+
+<div class="btn-row" style="max-width:560px">
+  <a class="btn" href="/collect">Collect another</a>
+  <a class="btn" href="/students/<%= student.id %>">Student profile</a>
+</div>
+
+<% if (!payment.voided) { %>
+<details class="card" style="max-width:560px; margin-top:16px">
+  <summary>Void this receipt</summary>
+  <p class="small muted">Use this only if the payment was entered by mistake. The receipt stays on record, marked VOID, and the amount becomes pending again.</p>
+  <form method="post" action="/payments/<%= payment.id %>/void" class="inline" data-confirm="Void receipt <%= payment.receipt_no %>?">
+    <input type="text" name="reason" placeholder="Reason (required)" required maxlength="300" aria-label="Reason">
+    <button class="btn danger" type="submit">Void</button>
+  </form>
+</details>
+<% } %>
+<%- include('../partials/footer') %>

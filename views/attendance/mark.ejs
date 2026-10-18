@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <a class="back" href="/attendance?date=<%= date %>" aria-label="Back"><%- icon('back') %></a>
+  <h1><%= section.label %> · <%= dates.dateLabel(date) %></h1>
+  <a class="btn sm" href="/attendance/<%= section.id %>/report?month=<%= date.slice(0, 7) %>">Report</a>
+</div>
+
+<% if (!students.length) { %>
+  <div class="card"><div class="empty">No active students in <%= section.label %>.</div></div>
+<% } else { %>
+<p class="muted small" style="margin-top:-6px">
+  <%= alreadyMarked ? 'Already marked. Change anyone and save again.' : 'Everyone starts as present. Tap the students who are absent.' %>
+</p>
+<form method="post" action="/attendance/<%= section.id %>" id="mark-form">
+  <input type="hidden" name="date" value="<%= date %>">
+  <div class="card flush">
+    <ul class="mark-list">
+      <% for (const s of students) { %>
+        <li>
+          <input type="hidden" name="student" value="<%= s.id %>">
+          <label>
+            <input type="checkbox" name="absent" value="<%= s.id %>" <%= s.status === 'A' ? 'checked' : '' %>>
+            <span class="avatar"><%= fmt.initials(s.name) %></span>
+            <span class="name"><%= s.name %></span>
+            <span class="state" aria-hidden="true"></span>
+          </label>
+        </li>
+      <% } %>
+    </ul>
+  </div>
+  <div class="sticky-save">
+    <div class="summary" id="mark-summary"><%= students.length %> students</div>
+    <button class="btn primary" type="submit">Save attendance</button>
+  </div>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

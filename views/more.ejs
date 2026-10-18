@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<div class="page-head"><h1>More</h1></div>
+
+<% if (user.role === 'admin') { %>
+<div class="card flush">
+  <h2>Manage</h2>
+  <ul class="list" style="margin-top:12px">
+    <li><a class="row" href="/settings"><div class="main"><div class="title">Settings &amp; fees</div><div class="meta">Center details on receipts, monthly fee per class, holiday months</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/users"><div class="main"><div class="title">Users</div><div class="meta">Admin and teacher logins</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/promote"><div class="main"><div class="title">Year-end promotion</div><div class="meta">Move 8th → 9th → 10th, mark 10th as passed out</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/backup"><div class="main"><div class="title">Download backup</div><div class="meta">Full copy of the database file</div></div><%- icon('download', 'chev') %></a></li>
+  </ul>
+</div>
+<% } %>
+
+<div class="card flush">
+  <h2>Account</h2>
+  <ul class="list" style="margin-top:12px">
+    <li><div class="row"><div class="main"><div class="title"><%= user.name %></div><div class="meta"><%= user.username %> · <%= user.role %></div></div></div></li>
+    <li><a class="row" href="/account/password"><div class="main"><div class="title">Change password</div></div><%- icon('chevron', 'chev') %></a></li>
+  </ul>
+</div>
+<form method="post" action="/logout"><button class="btn block danger" type="submit">Sign out</button></form>
+<%- include('partials/footer') %>

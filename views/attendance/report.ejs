@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <a class="back" href="/attendance" aria-label="Back"><%- icon('back') %></a>
+  <h1><%= section.label %> attendance</h1>
+</div>
+
+<form method="get" action="/attendance/<%= section.id %>/report" class="inline" style="margin-bottom:16px">
+  <div><label for="month">Month</label><input type="month" id="month" name="month" value="<%= month %>" max="<%= dates.currentMonth() %>" onchange="this.form.submit()"></div>
+</form>
+
+<div class="card flush">
+  <div class="row" style="min-height:0"><div class="main muted small"><%= days.length %> class day<%= days.length === 1 ? '' : 's' %> marked in <%= dates.monthLabel(month) %></div></div>
+  <% if (!report.length) { %>
+    <div class="empty">No students.</div>
+  <% } else { %>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Student</th><th class="r">Present</th><th class="r">Absent</th><th class="r">%</th></tr></thead>
+      <tbody>
+      <% for (const r of report) { %>
+        <tr>
+          <td>
+            <a href="/students/<%= r.id %>"><%= r.name %></a>
+            <% if (r.absentDates.length) { %><div class="small muted" style="white-space:normal">Absent: <%= r.absentDates.map((d) => Number(d.slice(8))).join(', ') %></div><% } %>
+          </td>
+          <td class="r num"><%= r.present %></td>
+          <td class="r num <%= r.absent ? 'bad-text' : '' %>"><%= r.absent %></td>
+          <td class="r num"><% if (r.pct === null) { %>—<% } else { %><span class="badge <%= r.pct >= 90 ? 'good' : r.pct >= 75 ? 'warn' : 'bad' %>"><%= r.pct %>%</span><% } %></td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</div>
+<%- include('../partials/footer') %>

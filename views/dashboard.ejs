@@ -1,0 +1,106 @@
+<%- include('partials/header') %>
+<%
+  const pct = expected ? Math.round((paidForMonth / expected) * 100) : 0;
+  const monthName = dates.monthLabel(month);
+%>
+<div class="page-head">
+  <h1>Dashboard</h1>
+  <div class="sub"><%= dates.dateLabel(dates.today()) %> · <%= activeCount %> active students</div>
+</div>
+
+<div class="stats">
+  <div class="stat hero">
+    <div class="label">Collected in <%= monthName %></div>
+    <div class="value"><%= fmt.money(collectedMonth.total) %></div>
+    <div class="hint"><%= collectedMonth.n %> receipts · Today <%= fmt.money(collectedToday.total) %></div>
+  </div>
+  <div class="stat">
+    <div class="label"><%= monthName.slice(0, 3) %> fees paid</div>
+    <div class="value"><%= pct %>%</div>
+    <div class="hint"><%= fmt.money(paidForMonth) %> of <%= fmt.money(expected) %></div>
+    <div class="progress" style="margin-top:8px"><span style="width:<%= Math.min(100, pct) %>%"></span></div>
+  </div>
+  <div class="stat">
+    <div class="label">Total pending</div>
+    <div class="value <%= totalPending ? 'bad' : '' %>"><%= fmt.money(totalPending) %></div>
+    <div class="hint"><a href="/students?filter=pending">View students →</a></div>
+  </div>
+  <div class="stat">
+    <div class="label">Attendance today</div>
+    <div class="value"><%= attendance.present %><span class="muted" style="font-size:1rem; font-weight:500"> / <%= attendance.present + attendance.absent %></span></div>
+    <div class="hint"><%= attendance.sectionsMarked %> of <%= attendance.sectionsTotal %> sections marked</div>
+  </div>
+</div>
+
+<div class="grid main-side">
+  <div>
+    <div class="card">
+      <h2>Collections, last 6 months <a class="link" href="/payments">All payments</a></h2>
+      <div class="bars">
+        <% for (const t of trend) { const h = Math.round((t.total / trendMax) * 100); %>
+          <div class="bar <%= t.month === month ? 'current' : '' %>">
+            <div class="amt"><%= t.total >= 100000 ? '₹' + (t.total / 100000).toFixed(1) + 'L' : t.total >= 1000 ? '₹' + Math.round(t.total / 1000) + 'k' : fmt.money(t.total) %></div>
+            <div class="fill" style="height:<%= h %>%" title="<%= fmt.money(t.total) %>"></div>
+            <div class="mon"><%= dates.monthLabel(t.month).slice(0, 3) %></div>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card flush">
+      <h2>This month by section</h2>
+      <div class="table-wrap" style="margin-top:8px">
+        <table>
+          <thead><tr><th>Section</th><th class="r">Paid</th><th class="r">Expected</th><th style="width:30%">Progress</th></tr></thead>
+          <tbody>
+          <% for (const s of sectionStats) { const p = s.expected ? Math.round(s.paid / s.expected * 100) : 0; %>
+            <tr>
+              <td><a href="/students?section=<%= s.id %>"><b><%= s.label %></b></a> <span class="muted small"><%= s.count %></span></td>
+              <td class="r num"><%= fmt.money(s.paid) %></td>
+              <td class="r num muted"><%= fmt.money(s.expected) %></td>
+              <td><div class="progress"><span style="width:<%= p %>%"></span></div></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card flush">
+      <h2>Overdue (2+ months) <% if (defaulterCount) { %><span class="badge bad"><%= defaulterCount %></span><% } %>
+        <a class="link" href="/students?filter=pending">All pending</a></h2>
+      <% if (!defaulters.length) { %>
+        <div class="empty">Nobody is 2 or more months behind.</div>
+      <% } else { %>
+      <ul class="list" style="margin-top:12px">
+        <% for (const d of defaulters) { %>
+          <li><a class="row" href="/students/<%= d.id %>">
+            <div class="avatar"><%= fmt.initials(d.name) %></div>
+            <div class="main"><div class="title"><%= d.name %></div><div class="meta"><%= d.label %> · <%= d.months %> months</div></div>
+            <div class="end bad-text"><b><%= fmt.money(d.pending) %></b></div>
+          </a></li>
+        <% } %>
+      </ul>
+      <% } %>
+    </div>
+
+    <div class="card flush">
+      <h2>Recent payments</h2>
+      <% if (!recent.length) { %>
+        <div class="empty">No payments yet. Tap <b>Collect fee</b> to record the first one.</div>
+      <% } else { %>
+      <ul class="list" style="margin-top:12px">
+        <% for (const p of recent) { %>
+          <li><a class="row" href="/payments/<%= p.id %>">
+            <div class="main"><div class="title <%= p.voided ? 'strike' : '' %>"><%= p.name %></div><div class="meta"><%= p.label %> · <%= dates.dateLabel(p.paid_on) %> · <%= p.method %></div></div>
+            <div class="end"><b class="<%= p.voided ? 'strike muted' : '' %>"><%= fmt.money(p.amount) %></b></div>
+          </a></li>
+        <% } %>
+      </ul>
+      <% } %>
+    </div>
+  </div>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,29 @@
+[Unit]
+Description=Tuition center manager
+After=network.target
+
+[Service]
+Type=simple
+User=tuition
+WorkingDirectory=/opt/tuition
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=127.0.0.1
+Environment=TZ=Asia/Kolkata
+Environment=DATA_DIR=/opt/tuition/data
+# Behind Nginx with HTTPS: trust X-Forwarded-* and send cookies only over HTTPS.
+Environment=TRUST_PROXY=1
+Environment=COOKIE_SECURE=1
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/tuition/data
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

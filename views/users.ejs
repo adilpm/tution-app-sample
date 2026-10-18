@@ -1,0 +1,52 @@
+<%- include('partials/header') %>
+<div class="page-head"><a class="back" href="/more" aria-label="Back"><%- icon('back') %></a><h1>Users</h1></div>
+
+<div class="grid two">
+  <div class="card flush">
+    <h2>Logins</h2>
+    <p class="muted small" style="margin:4px 16px 12px">Teachers can only mark and view attendance. Admins can do everything.</p>
+    <ul class="list">
+      <% for (const u of users) { %>
+        <li style="padding:12px 16px">
+          <div style="display:flex; align-items:center; gap:10px">
+            <div class="main" style="flex:1; min-width:0">
+              <div class="title" style="font-weight:600"><%= u.name %> <% if (!u.active) { %><span class="badge">Disabled</span><% } %></div>
+              <div class="meta muted small"><%= u.username %> · <span class="badge <%= u.role === 'admin' ? 'brand' : '' %>"><%= u.role %></span></div>
+            </div>
+            <% if (u.id !== user.id) { %>
+            <form method="post" action="/users/<%= u.id %>">
+              <input type="hidden" name="action" value="toggle">
+              <button class="btn sm <%= u.active ? 'danger' : '' %>" type="submit"><%= u.active ? 'Disable' : 'Enable' %></button>
+            </form>
+            <% } %>
+          </div>
+          <details style="margin-top:6px">
+            <summary class="small">Reset password</summary>
+            <form method="post" action="/users/<%= u.id %>" class="inline">
+              <input type="hidden" name="action" value="password">
+              <input type="password" name="password" placeholder="New password (8+ chars)" minlength="8" required autocomplete="new-password" aria-label="New password">
+              <button class="btn sm" type="submit">Set</button>
+            </form>
+          </details>
+        </li>
+      <% } %>
+    </ul>
+  </div>
+
+  <form method="post" action="/users" class="card">
+    <h2>Add user</h2>
+    <% if (error) { %><div class="flash error"><%= error %></div><% } %>
+    <div class="field"><label for="name">Name</label><input type="text" id="name" name="name" required maxlength="100"></div>
+    <div class="field"><label for="username">Username</label><input type="text" id="username" name="username" required maxlength="40" autocapitalize="none" autocomplete="off"></div>
+    <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" required minlength="8" autocomplete="new-password"></div>
+    <div class="field">
+      <label>Role</label>
+      <div class="segmented">
+        <label><input type="radio" name="role" value="teacher" checked><span>Teacher</span></label>
+        <label><input type="radio" name="role" value="admin"><span>Admin</span></label>
+      </div>
+    </div>
+    <button class="btn primary block" type="submit">Create user</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

@@ -1,0 +1,69 @@
+<%- include('partials/header') %>
+<div class="page-head"><a class="back" href="/more" aria-label="Back"><%- icon('back') %></a><h1>Settings</h1></div>
+
+<div class="grid two">
+  <form method="post" action="/settings" class="card">
+    <h2>Center details</h2>
+    <p class="muted small" style="margin-top:-6px">Printed on every receipt.</p>
+    <div class="field"><label for="center_name">Center name</label><input type="text" id="center_name" name="center_name" value="<%= settings.center_name %>" maxlength="100" required></div>
+    <div class="field"><label for="center_address">Address</label><input type="text" id="center_address" name="center_address" value="<%= settings.center_address %>" maxlength="200"></div>
+    <div class="field"><label for="center_phone">Phone</label><input type="text" id="center_phone" name="center_phone" value="<%= settings.center_phone %>" maxlength="50"></div>
+
+    <h2 style="margin-top:20px">Months without fees</h2>
+    <p class="muted small" style="margin-top:-6px">Tick months that are not billed (e.g. vacation). Affects every student.</p>
+    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:16px">
+      <% dates.MONTH_NAMES.forEach((name, i) => { const v = String(i + 1).padStart(2, '0'); %>
+        <label style="display:flex; align-items:center; gap:6px; font-weight:500; margin:0">
+          <input type="checkbox" name="skip" value="<%= v %>" <%= skip.has(v) ? 'checked' : '' %>> <%= name %>
+        </label>
+      <% }) %>
+    </div>
+    <button class="btn primary block" type="submit">Save settings</button>
+  </form>
+
+  <div class="card">
+    <h2>Monthly fees</h2>
+    <p class="muted small" style="margin-top:-6px">A new fee applies from the month you choose. Earlier months keep their old fee.</p>
+    <% for (const c of classes) { %>
+      <div style="border-top:1px solid var(--line); padding:12px 0">
+        <div style="display:flex; align-items:baseline; gap:8px">
+          <b><%= c.name %> standard</b>
+          <span class="muted small">now</span>
+          <b style="margin-left:auto"><%= fmt.money(c.current && c.current.amount) %>/month</b>
+        </div>
+        <% if (c.history.length > 1) { %>
+          <ul class="small muted" style="margin:6px 0 0; padding-left:18px">
+            <% for (const r of c.history) { %>
+              <li style="margin-bottom:4px">
+                <%= fmt.money(r.amount) %> from <%= r.effective_from === '2000-01' ? 'the start' : dates.monthLabel(r.effective_from) %>
+                <form method="post" action="/settings/fees/<%= r.id %>/delete" style="display:inline" data-confirm="Remove this fee change? Months it covered will use the previous fee.">
+                  <button class="btn sm danger" type="submit" style="min-height:28px; padding:2px 8px; margin-left:6px">Remove</button>
+                </form>
+              </li>
+            <% } %>
+          </ul>
+        <% } %>
+      </div>
+    <% } %>
+
+    <form method="post" action="/settings/fees" style="border-top:1px solid var(--line); padding-top:14px">
+      <h3 style="margin-bottom:10px">Change a fee</h3>
+      <div class="form-row">
+        <div class="field">
+          <label for="class_id">Class</label>
+          <select id="class_id" name="class_id"><% for (const c of classes) { %><option value="<%= c.id %>"><%= c.name %></option><% } %></select>
+        </div>
+        <div class="field">
+          <label for="amount">New monthly fee (₹)</label>
+          <input type="number" id="amount" name="amount" min="1" step="1" required inputmode="numeric">
+        </div>
+      </div>
+      <div class="field">
+        <label for="effective_from">Applies from</label>
+        <input type="month" id="effective_from" name="effective_from" value="<%= month %>" required>
+      </div>
+      <button class="btn primary block" type="submit">Save fee</button>
+    </form>
+  </div>
+</div>
+<%- include('partials/footer') %>

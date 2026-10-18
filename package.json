@@ -1,0 +1,25 @@
+{
+  "name": "tuition-manager",
+  "version": "1.0.0",
+  "description": "Fee collection and attendance tracking for a tuition center",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "user": "node scripts/user.js",
+    "seed-demo": "node scripts/seed-demo.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "ejs": "^7.0.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.3",
+    "express-session": "^1.19.0",
+    "pdfkit": "^0.20.2"
+  }
+}

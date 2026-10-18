@@ -1,0 +1,89 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <a class="back" href="<%= isNew ? '/students' : '/students/' + student.id %>" aria-label="Back"><%- icon('back') %></a>
+  <h1><%= isNew ? 'Add student' : 'Edit student' %></h1>
+</div>
+
+<% if (errors.length) { %><ul class="errors"><% for (const e of errors) { %><li><%= e %></li><% } %></ul><% } %>
+
+<form method="post" action="<%= isNew ? '/students' : '/students/' + student.id %>" class="card" style="max-width:720px">
+  <div class="field">
+    <label for="name">Student name</label>
+    <input type="text" id="name" name="name" value="<%= student.name || '' %>" required maxlength="100" autocomplete="off" <%= isNew ? 'autofocus' : '' %>>
+  </div>
+  <div class="form-row">
+    <div class="field">
+      <label for="parent_name">Parent / guardian</label>
+      <input type="text" id="parent_name" name="parent_name" value="<%= student.parent_name || '' %>" maxlength="100" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="phone">Parent's WhatsApp number</label>
+      <input type="tel" id="phone" name="phone" value="<%= student.phone || '' %>" maxlength="20" inputmode="tel" placeholder="98765 43210">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="field">
+      <label for="section_id">Class &amp; division</label>
+      <select id="section_id" name="section_id" required>
+        <option value="">Choose…</option>
+        <% for (const s of sections) { %>
+          <option value="<%= s.id %>" <%= Number(student.section_id) === s.id ? 'selected' : '' %>><%= s.class_name %> – <%= s.division %></option>
+        <% } %>
+      </select>
+    </div>
+    <div class="field">
+      <label for="join_date">Join date</label>
+      <input type="date" id="join_date" name="join_date" value="<%= student.join_date || '' %>" required>
+      <div class="help">Joined on or before the 15th: that month is billed. After the 15th: billing starts next month.</div>
+    </div>
+  </div>
+
+  <% if (!isNew) { %>
+  <div class="form-row">
+    <div class="field">
+      <label for="billing_start">First billed month</label>
+      <input type="month" id="billing_start" name="billing_start" value="<%= student.billing_start %>" required>
+    </div>
+    <div class="field">
+      <label for="section_change">If class/division changed</label>
+      <select id="section_change" name="section_change">
+        <option value="move">Moved this month (keep history)</option>
+        <option value="correction">Was entered wrongly (fix all months)</option>
+      </select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        <option value="active" <%= student.status === 'active' ? 'selected' : '' %>>Active</option>
+        <option value="left" <%= student.status === 'left' ? 'selected' : '' %>>Left</option>
+        <option value="passed" <%= student.status === 'passed' ? 'selected' : '' %>>Passed out</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="billing_end">Last billed month (if left)</label>
+      <input type="month" id="billing_end" name="billing_end" value="<%= student.billing_end || '' %>">
+      <div class="help">Leave empty to use the current month.</div>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="field">
+    <label for="notes">Notes</label>
+    <textarea id="notes" name="notes" maxlength="1000"><%= student.notes || '' %></textarea>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary big" type="submit"><%= isNew ? 'Save student' : 'Save changes' %></button>
+    <% if (isNew) { %><button class="btn big" type="submit" name="another" value="1">Save &amp; add another</button><% } %>
+  </div>
+</form>
+
+<% if (!isNew) { %>
+<form method="post" action="/students/<%= student.id %>/delete" data-confirm="Delete <%= student.name %> permanently? This cannot be undone." style="max-width:720px">
+  <button class="btn danger sm" type="submit">Delete student</button>
+  <span class="muted small">Only possible if no payments were recorded. Otherwise set status to "Left".</span>
+</form>
+<% } %>
+<%- include('../partials/footer') %>

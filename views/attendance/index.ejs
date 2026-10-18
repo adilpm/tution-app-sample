@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Attendance</h1>
+</div>
+
+<form method="get" action="/attendance" class="inline" style="margin-bottom:16px">
+  <div><label for="date">Date</label><input type="date" id="date" name="date" value="<%= date %>" max="<%= dates.today() %>" onchange="this.form.submit()"></div>
+  <% if (!isToday) { %><a class="btn" href="/attendance">Today</a><% } %>
+</form>
+
+<p class="muted small" style="margin-top:-6px">Tap a section to mark attendance for <b><%= dates.dateLabel(date) %></b>. Green = already marked.</p>
+
+<% for (const c of classes) { %>
+<div class="card">
+  <h2><%= c.name %> standard</h2>
+  <div class="section-grid">
+    <% for (const s of c.sections) { %>
+      <a class="section-tile <%= s.marked ? 'done' : '' %>" href="/attendance/<%= s.id %>?date=<%= date %>">
+        <div class="name"><%= s.label %></div>
+        <div class="info">
+          <% if (s.marked) { %><%= s.marked.present %>P · <%= s.marked.absent %>A<% } else { %><%= s.students %> students<% } %>
+        </div>
+      </a>
+    <% } %>
+  </div>
+</div>
+<% } %>
+
+<div class="card flush">
+  <h2>Monthly reports</h2>
+  <div class="chips" style="padding:12px 16px 14px; margin:0">
+    <% for (const c of classes) for (const s of c.sections) { %>
+      <a class="chip" href="/attendance/<%= s.id %>/report"><%= s.label %></a>
+    <% } %>
+  </div>
+</div>
+<%- include('../partials/footer') %>
