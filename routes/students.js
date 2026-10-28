@@ -5,6 +5,7 @@ const {
   buildLedgers, ledgerFor, monthlyFee, paymentLines, duesSummary,
 } = require('../lib/ledger');
 const { feeReminderLink } = require('../lib/messages');
+const { track } = require('../lib/analytics');
 const {
   today, currentMonth, billingStartFor, isDate, isMonth,
 } = require('../lib/dates');
@@ -98,6 +99,7 @@ router.post('/students', (req, res) => {
       .run(newId, data.section_id, data.billing_start);
     return newId;
   })();
+  track(req.user, 'student_added', { class: sections.find((s) => s.id === data.section_id)?.label });
   req.flash('success', `${data.name} added.`);
   res.redirect(req.body.another ? `/students/new?section=${data.section_id}` : `/students/${id}`);
 });
@@ -154,6 +156,7 @@ router.post('/students/:id/charges', loadStudent, (req, res) => {
   } else {
     db.prepare('INSERT INTO charges (student_id, title, amount, month, created_by) VALUES (?, ?, ?, ?, ?)')
       .run(req.student.id, title, amount, month, req.user.id);
+    track(req.user, 'one_time_fee_added', { amount, applied_to: 'student', students: 1 });
     req.flash('success', `${title} of ${money(amount)} added.`);
   }
   res.redirect(`/students/${req.student.id}`);

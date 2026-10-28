@@ -8,6 +8,7 @@ const {
   RANGES, resolveRange, rangeLabel, rangeQuery,
 } = require('../lib/ranges');
 const { writeReceipt } = require('../lib/receipt');
+const { track } = require('../lib/analytics');
 const { writePaymentsPdf, writePaymentsXlsx } = require('../lib/report');
 const { today, monthsSummary, isDate } = require('../lib/dates');
 const { money, waLink, csvRow } = require('../lib/format');
@@ -92,9 +93,10 @@ router.post('/collect/:id', (req, res) => {
   if (duplicate) return res.redirect(`/payments/${duplicate.id}`);
 
   let paymentId;
+  let parts;
   try {
     paymentId = db.transaction(() => {
-      const parts = allocate(student.id, amount);
+      parts = allocate(student.id, amount);
       const year = form.paid_on.slice(0, 4);
       const { seq } = db.prepare(`
         SELECT COALESCE(MAX(CAST(substr(receipt_no, 8) AS INTEGER)), 0) + 1 AS seq
@@ -112,6 +114,13 @@ router.post('/collect/:id', (req, res) => {
     if (err.userFacing) return renderCollectForm(res, student, form, err.message, 400);
     throw err;
   }
+  track(req.user, 'fee_collected', {
+    amount,
+    method: form.method,
+    months: parts.filter((p) => p.month).length,
+    one_time_fees: parts.filter((p) => p.chargeId).length,
+    backdated: form.paid_on !== today(),
+  });
   res.redirect(`/payments/${paymentId}?new=1`);
 });
 
@@ -183,6 +192,7 @@ router.post('/payments/:id(\\d+)/void', (req, res) => {
     UPDATE payments SET voided = 1, void_reason = ?, voided_by = ?, voided_at = CURRENT_TIMESTAMP
     WHERE id = ? AND voided = 0
   `).run(reason, req.user.id, data.payment.id);
+  track(req.user, 'receipt_voided', { amount: data.payment.amount });
   req.flash('success', `Receipt ${data.payment.receipt_no} voided. The amount is pending again.`);
   res.redirect(`/payments/${data.payment.id}`);
 });
@@ -238,6 +248,7 @@ router.get('/payments', (req, res) => {
 
 router.get('/payments.pdf', (req, res) => {
   const data = reportData(req.query);
+  track(req.user, 'report_exported', { report: 'payments', format: 'pdf', range: data.period.range });
   res.set({
     'Content-Type': 'application/pdf',
     'Content-Disposition': `attachment; filename="${data.filename}.pdf"`,
@@ -247,6 +258,7 @@ router.get('/payments.pdf', (req, res) => {
 
 router.get('/payments.xlsx', async (req, res, next) => {
   const data = reportData(req.query);
+  track(req.user, 'report_exported', { report: 'payments', format: 'xlsx', range: data.period.range });
   res.set({
     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'Content-Disposition': `attachment; filename="${data.filename}.xlsx"`,

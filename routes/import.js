@@ -5,6 +5,7 @@ const express = require('express');
 const ExcelJS = require('exceljs');
 const { db, getSections } = require('../db');
 const { requireAdmin } = require('../lib/auth');
+const { track } = require('../lib/analytics');
 const { today, billingStartFor, isDate } = require('../lib/dates');
 
 const router = express.Router();
@@ -201,6 +202,7 @@ router.post('/import/confirm', (req, res) => {
       added += 1;
     }
   })();
+  track(req.user, 'students_imported', { count: added });
   req.flash('success', `${added} student${added === 1 ? '' : 's'} imported.`);
   res.redirect('/students');
 });

@@ -5,6 +5,7 @@ const { db, getSections, getSettings } = require('../db');
 const { requireAdmin } = require('../lib/auth');
 const { buildLedgers, duesSummary } = require('../lib/ledger');
 const { feeReminderLink } = require('../lib/messages');
+const { track } = require('../lib/analytics');
 const { writeTablePdf, writeTableXlsx } = require('../lib/report');
 const { rupees } = require('../lib/pdf-kit');
 const { currentMonth, isMonth, today } = require('../lib/dates');
@@ -68,6 +69,7 @@ const duesFilename = (d) => `dues_${today()}${d.section ? `_${d.rows[0]?.label |
 
 router.get('/dues.pdf', (req, res) => {
   const d = duesData(req.query);
+  track(req.user, 'report_exported', { report: 'dues', format: 'pdf' });
   res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="${duesFilename(d)}.pdf"` });
   writeTablePdf(res, {
     title: 'Pending dues',
@@ -86,6 +88,7 @@ router.get('/dues.pdf', (req, res) => {
 
 router.get('/dues.xlsx', async (req, res, next) => {
   const d = duesData(req.query);
+  track(req.user, 'report_exported', { report: 'dues', format: 'xlsx' });
   res.set({
     'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'Content-Disposition': `attachment; filename="${duesFilename(d)}.xlsx"`,
@@ -160,6 +163,7 @@ router.post('/fees', (req, res) => {
     }
   })();
   const skipped = students.length - added;
+  track(req.user, 'one_time_fee_added', { amount, applied_to: kind, students: added });
   req.flash('success', `${title} of ${money(amount)} added for ${added} student${added === 1 ? '' : 's'}`
     + `${skipped ? ` (${skipped} already had it)` : ''}.`);
   res.redirect('/fees');

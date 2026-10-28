@@ -1,6 +1,7 @@
 const express = require('express');
 const { db } = require('../db');
 const { requireAdmin } = require('../lib/auth');
+const { track } = require('../lib/analytics');
 const {
   RANGES, resolveRange, rangeLabel,
 } = require('../lib/ranges');
@@ -64,6 +65,7 @@ router.post('/expenses', (req, res) => {
   } else {
     db.prepare('INSERT INTO expenses (date, category, amount, note, created_by) VALUES (?, ?, ?, ?, ?)')
       .run(date, category, amount, note, req.user.id);
+    track(req.user, 'expense_added', { amount, category });
     req.flash('success', `${category} expense of ${money(amount)} saved.`);
   }
   res.redirect(`/expenses${req.body.back ? `?${req.body.back}` : ''}`);

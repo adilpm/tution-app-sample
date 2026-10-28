@@ -3,6 +3,8 @@
   // Prevent double submits (e.g. double-tap on "Save payment").
   document.addEventListener('submit', function (e) {
     var form = e.target;
+    // Signing out: forget the PostHog identity on this device.
+    if (form.getAttribute('action') === '/logout' && window.posthog && window.posthog.reset) window.posthog.reset();
     if (form.dataset.confirm && !window.confirm(form.dataset.confirm)) {
       e.preventDefault();
       return;
@@ -106,6 +108,12 @@
     list.querySelectorAll('[data-remind]').forEach(function (btn) {
       if (sent.indexOf(btn.dataset.remind) !== -1) mark(btn);
       btn.addEventListener('click', function () {
+        if (window.posthog && window.posthog.capture) {
+          window.posthog.capture('whatsapp_message_opened', {
+            kind: list.dataset.reminders.indexOf('absent-') === 0 ? 'absence' : 'fee_reminder',
+            repeat: sent.indexOf(btn.dataset.remind) !== -1,
+          });
+        }
         if (sent.indexOf(btn.dataset.remind) === -1) sent.push(btn.dataset.remind);
         try { localStorage.setItem(key, JSON.stringify(sent)); } catch (e) { /* private mode */ }
         mark(btn);

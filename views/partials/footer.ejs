@@ -2,6 +2,36 @@
 <% if (user && user.role === 'admin' && !path.startsWith('/collect') && !/^\/attendance\/\d+$/.test(path)) { %>
 <a class="fab" href="/collect"><%- icon('rupee') %>Collect fee</a>
 <% } %>
-<script src="/app.js?v=2"></script>
+<script src="/app.js?v=3"></script>
+<% if (typeof posthog !== 'undefined' && posthog) {
+  // JSON for an inline <script>: escape "<" so no value can close the tag.
+  const js = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+%>
+<script src="/vendor/posthog/array.full.no-external.js?v=1.440.0"></script>
+<script>
+  // Privacy: no click autocapture, all text and inputs masked in replays, and
+  // page titles (which can contain student names) and search terms removed.
+  posthog.init(<%- js(posthog.key) %>, {
+    api_host: <%- js(posthog.host) %>,
+    person_profiles: 'identified_only',
+    autocapture: false,
+    capture_pageview: true,
+    capture_pageleave: true,
+    disable_surveys: true,
+    session_recording: { maskAllInputs: true, maskTextSelector: '*' },
+    before_send: function (event) {
+      if (!event || !event.properties) return event;
+      var p = event.properties;
+      delete p.$title;
+      delete p.title;
+      ['$current_url', '$referrer', '$initial_current_url', '$initial_referrer'].forEach(function (k) {
+        if (typeof p[k] === 'string') p[k] = p[k].replace(/([?&])q=[^&#]*/g, '$1q=');
+      });
+      return event;
+    }
+  });
+  posthog.identify(<%- js(posthog.distinctId) %>, { username: <%- js(user.username) %>, role: <%- js(user.role) %> });
+</script>
+<% } %>
 </body>
 </html>

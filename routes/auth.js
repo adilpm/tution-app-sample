@@ -3,6 +3,7 @@ const { db } = require('../db');
 const {
   checkPassword, hashPassword, requireLogin, loginBlocked, recordLoginFailure, clearLoginFailures,
 } = require('../lib/auth');
+const { track } = require('../lib/analytics');
 
 const router = express.Router();
 
@@ -31,6 +32,7 @@ router.post('/login', (req, res, next) => {
   req.session.regenerate((err) => {
     if (err) return next(err);
     req.session.userId = user.id;
+    track(user, 'logged_in');
     res.redirect(nextUrl);
   });
 });

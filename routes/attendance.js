@@ -1,6 +1,7 @@
 const express = require('express');
 const { db, getSections } = require('../db');
 const { absenceAlertLink } = require('../lib/messages');
+const { track } = require('../lib/analytics');
 const {
   today, currentMonth, isDate, isMonth, dateLabel,
 } = require('../lib/dates');
@@ -90,6 +91,9 @@ router.post('/attendance/:sectionId(\\d+)', (req, res) => {
   })();
 
   const absentCount = ids.filter((id) => absent.has(id)).length;
+  track(req.user, 'attendance_saved', {
+    section: section.label, present: ids.length - absentCount, absent: absentCount, backdated: date !== today(),
+  });
   req.flash('success', `${section.label} saved for ${dateLabel(date)}: ${ids.length - absentCount} present, ${absentCount} absent.`);
   // With absentees, go straight to the parent alerts.
   res.redirect(absentCount ? `/attendance/${section.id}/absent?date=${date}` : `/attendance?date=${date}`);

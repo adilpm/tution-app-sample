@@ -101,6 +101,17 @@ The service file sets `COOKIE_SECURE=1`, so **logins only work over HTTPS**. If 
 | `COOKIE_SECURE` | – | Set to `1` when served over HTTPS |
 | `ADMIN_PASSWORD` | random | Password for the admin created on first run |
 | `SESSION_SECRET` | auto | Auto-generated and stored in the DB if not set |
+| `POSTHOG_KEY` | – | PostHog project API key (`phc_…`). Analytics are off when unset |
+| `POSTHOG_HOST` | https://us.i.posthog.com | PostHog ingestion host (`https://eu.i.posthog.com` for EU) |
+
+### Analytics (PostHog)
+
+With `POSTHOG_KEY` set, logged-in pages send page views and masked session replays (no click
+autocapture; all text and inputs masked; page titles and search terms stripped), and the server
+sends named events with counts and amounts only: `logged_in`, `fee_collected`, `receipt_voided`,
+`student_added`, `students_imported`, `one_time_fee_added`, `attendance_saved`, `expense_added`,
+`report_exported`, plus `whatsapp_message_opened` from the browser. Users are identified as
+`user-<id>` with their username and role, never by student or parent details.
 
 ## Project layout
 

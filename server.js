@@ -14,6 +14,7 @@ const format = require('./lib/format');
 const dates = require('./lib/dates');
 const { icon } = require('./lib/icons');
 const { logoPath } = require('./lib/pdf-kit');
+const analytics = require('./lib/analytics');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -34,6 +35,10 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
+// PostHog's browser bundle, served from here rather than a third-party CDN.
+if (analytics.browserConfig) {
+  app.use('/vendor/posthog', express.static(path.join(path.dirname(require.resolve('posthog-js/package.json')), 'dist'), { maxAge: '7d' }));
+}
 // File uploads (logo, student import) arrive base64-encoded in a form field,
 // so only those two endpoints accept large bodies.
 const BIG_FORMS = new Set(['/settings/logo', '/import/preview']);
@@ -88,6 +93,9 @@ app.use((req, res, next) => {
   res.locals.dates = dates;
   res.locals.icon = icon;
   res.locals.user = res.locals.user || null;
+  res.locals.posthog = analytics.browserConfig && req.user
+    ? { ...analytics.browserConfig, distinctId: analytics.distinctId(req.user) }
+    : null;
   next();
 });
 
