@@ -1,3 +1,12 @@
+// Local settings from ./.env, if there is one. Variables already set (e.g. by
+// the systemd service on the server) win; empty lines in .env are ignored.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file: rely on the real environment.
+}
+for (const [k, v] of Object.entries(process.env)) if (v === '') delete process.env[k];
+
 // Fee amounts and "today" depend on local dates, so pin the timezone before
 // anything creates a Date. Override with TZ=... if the center is elsewhere.
 process.env.TZ = process.env.TZ || 'Asia/Kolkata';

@@ -6,3 +6,6 @@ backups/
 *.db-wal
 *.db-shm
 .claude/launch.json
+.env
+.env.*
+!.env.example
