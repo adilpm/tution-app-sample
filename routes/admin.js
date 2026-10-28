@@ -2,15 +2,16 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const {
-  db, dataDir, getSections, getSetting, setSetting,
+  db, dataDir, ordinal, getSections, getSetting, setSetting,
 } = require('../db');
 const { requireAdmin, hashPassword } = require('../lib/auth');
+const { logoPath } = require('../lib/pdf-kit');
 const {
   currentMonth, addMonths, isMonth, monthLabel, today,
 } = require('../lib/dates');
 
 const router = express.Router();
-router.use(['/settings', '/users', '/promote', '/backup'], requireAdmin);
+router.use(['/settings', '/users', '/promote', '/backup', '/classes'], requireAdmin);
 
 const clean = (v, max = 200) => String(v == null ? '' : v).trim().slice(0, max);
 
@@ -30,6 +31,7 @@ function feeRates() {
 router.get('/settings', (req, res) => {
   res.render('settings', {
     title: 'Settings',
+    hasLogo: !!logoPath(),
     classes: feeRates(),
     skip: new Set((getSetting('skip_months') || '').split(',').filter(Boolean)),
     month: currentMonth(),
@@ -76,12 +78,149 @@ router.post('/settings/fees/:id/delete', (req, res) => {
   res.redirect('/settings');
 });
 
+// ---------- Logo ----------
+
+const LOGO_TYPES = {
+  png: { mime: 'image/png', magic: [0x89, 0x50, 0x4e, 0x47] },
+  jpg: { mime: 'image/jpeg', magic: [0xff, 0xd8, 0xff] },
+};
+
+router.post('/settings/logo', (req, res) => {
+  const match = /^data:image\/(png|jpeg);base64,([A-Za-z0-9+/=]+)$/.exec(String(req.body.logo || ''));
+  const ext = match && (match[1] === 'png' ? 'png' : 'jpg');
+  const buf = match ? Buffer.from(match[2], 'base64') : null;
+  if (!buf || buf.length > 1024 * 1024 || !LOGO_TYPES[ext].magic.every((b, i) => buf[i] === b)) {
+    req.flash('error', 'Choose a PNG or JPG image under 1 MB.');
+    return res.redirect('/settings');
+  }
+  for (const e of Object.keys(LOGO_TYPES)) fs.rmSync(path.join(dataDir, `logo.${e}`), { force: true });
+  fs.writeFileSync(path.join(dataDir, `logo.${ext}`), buf, { mode: 0o600 });
+  req.flash('success', 'Logo saved. It now appears on receipts and reports.');
+  res.redirect('/settings');
+});
+
+router.post('/settings/logo/remove', (req, res) => {
+  for (const e of Object.keys(LOGO_TYPES)) fs.rmSync(path.join(dataDir, `logo.${e}`), { force: true });
+  req.flash('success', 'Logo removed.');
+  res.redirect('/settings');
+});
+
+// Any logged-in user (the sidebar shows it).
+router.get('/logo', (req, res) => {
+  const file = logoPath();
+  if (!file) return res.status(404).end();
+  res.set('Cache-Control', 'private, max-age=300');
+  res.type(file.endsWith('.png') ? 'png' : 'jpeg').sendFile(file);
+});
+
+// ---------- Classes & divisions ----------
+
+function classesOverview() {
+  const counts = new Map(db.prepare(`
+    SELECT section_id, SUM(status = 'active') AS active, COUNT(*) AS total FROM students GROUP BY section_id
+  `).all().map((r) => [r.section_id, r]));
+  const sections = getSections();
+  return feeRates().map((c) => ({
+    ...c,
+    sections: sections.filter((s) => s.class_id === c.id).map((s) => ({
+      ...s, active: counts.get(s.id)?.active || 0, total: counts.get(s.id)?.total || 0,
+    })),
+  }));
+}
+
+router.get('/classes', (req, res) => {
+  res.render('classes', { title: 'Classes', classes: classesOverview() });
+});
+
+const cleanDivision = (v) => String(v || '').trim().toUpperCase();
+const validDivision = (d) => /^[A-Z0-9]{1,3}$/.test(d);
+
+router.post('/classes', (req, res) => {
+  const grade = Number(req.body.grade);
+  const fee = Number(req.body.fee);
+  const divisions = [...new Set(String(req.body.divisions || '').split(/[\s,]+/).map(cleanDivision).filter(Boolean))];
+  if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+    req.flash('error', 'Class must be a number from 1 to 12.');
+  } else if (db.prepare('SELECT 1 FROM classes WHERE grade = ?').get(grade)) {
+    req.flash('error', `Class ${grade} already exists. Add divisions to it instead.`);
+  } else if (!Number.isInteger(fee) || fee <= 0) {
+    req.flash('error', 'Enter the monthly fee in whole rupees.');
+  } else if (!divisions.length || !divisions.every(validDivision)) {
+    req.flash('error', 'Enter divisions like: A, B, C (letters or numbers, up to 3 characters).');
+  } else {
+    db.transaction(() => {
+      const classId = db.prepare('INSERT INTO classes (grade, name) VALUES (?, ?)').run(grade, ordinal(grade)).lastInsertRowid;
+      for (const d of divisions) db.prepare('INSERT INTO sections (class_id, division) VALUES (?, ?)').run(classId, d);
+      db.prepare('INSERT INTO fee_rates (class_id, amount, effective_from) VALUES (?, ?, ?)').run(classId, fee, '2000-01');
+    })();
+    req.flash('success', `${ordinal(grade)} added with ${divisions.length} division${divisions.length === 1 ? '' : 's'}.`);
+  }
+  res.redirect('/classes');
+});
+
+router.post('/classes/:id/sections', (req, res) => {
+  const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(Number(req.params.id));
+  const division = cleanDivision(req.body.division);
+  if (!cls || !validDivision(division)) {
+    req.flash('error', 'Enter a division like E (letters or numbers, up to 3 characters).');
+  } else if (db.prepare('SELECT 1 FROM sections WHERE class_id = ? AND division = ?').get(cls.id, division)) {
+    req.flash('error', `${cls.grade}${division} already exists.`);
+  } else {
+    db.prepare('INSERT INTO sections (class_id, division) VALUES (?, ?)').run(cls.id, division);
+    req.flash('success', `${cls.grade}${division} added.`);
+  }
+  res.redirect('/classes');
+});
+
+// Only empty, never-used sections can go; anything with history stays.
+router.post('/sections/:id/delete', requireAdmin, (req, res) => {
+  const s = getSections().find((x) => x.id === Number(req.params.id));
+  const used = s && ['students', 'enrollments', 'attendance'].some((t) => db.prepare(`SELECT 1 FROM ${t} WHERE section_id = ? LIMIT 1`).get(s.id));
+  if (!s) {
+    req.flash('error', 'Section not found.');
+  } else if (used) {
+    req.flash('error', `${s.label} has students or history, so it can't be deleted.`);
+  } else {
+    db.prepare('DELETE FROM sections WHERE id = ?').run(s.id);
+    req.flash('success', `${s.label} deleted.`);
+  }
+  res.redirect('/classes');
+});
+
+router.post('/classes/:id/delete', (req, res) => {
+  const cls = db.prepare('SELECT * FROM classes WHERE id = ?').get(Number(req.params.id));
+  if (!cls) {
+    req.flash('error', 'Class not found.');
+  } else if (db.prepare('SELECT 1 FROM sections WHERE class_id = ?').get(cls.id)) {
+    req.flash('error', `Delete ${cls.name}'s divisions first.`);
+  } else {
+    db.transaction(() => {
+      db.prepare('DELETE FROM fee_rates WHERE class_id = ?').run(cls.id);
+      db.prepare('DELETE FROM classes WHERE id = ?').run(cls.id);
+    })();
+    req.flash('success', `${cls.name} deleted.`);
+  }
+  res.redirect('/classes');
+});
+
 // ---------- Users ----------
 
-router.get('/users', (req, res) => {
+function usersPage(res, error, status = 200) {
   const users = db.prepare('SELECT id, username, name, role, active FROM users ORDER BY role, name').all();
-  res.render('users', { title: 'Users', users, error: null });
-});
+  const assigned = new Map();
+  for (const r of db.prepare('SELECT user_id, section_id FROM teacher_sections').all()) {
+    if (!assigned.has(r.user_id)) assigned.set(r.user_id, new Set());
+    assigned.get(r.user_id).add(r.section_id);
+  }
+  res.status(status).render('users', {
+    title: 'Users',
+    users: users.map((u) => ({ ...u, sections: assigned.get(u.id) || new Set() })),
+    sections: getSections(),
+    error,
+  });
+}
+
+router.get('/users', (req, res) => usersPage(res, null));
 
 router.post('/users', (req, res) => {
   const username = clean(req.body.username, 40).toLowerCase();
@@ -93,10 +232,7 @@ router.post('/users', (req, res) => {
   else if (!name) error = 'Name is required.';
   else if (password.length < 8) error = 'Password must be at least 8 characters.';
   else if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) error = 'That username is taken.';
-  if (error) {
-    const users = db.prepare('SELECT id, username, name, role, active FROM users ORDER BY role, name').all();
-    return res.status(400).render('users', { title: 'Users', users, error });
-  }
+  if (error) return usersPage(res, error, 400);
   db.prepare('INSERT INTO users (username, name, password_hash, role) VALUES (?, ?, ?, ?)')
     .run(username, name, hashPassword(password), role);
   req.flash('success', `User ${username} created.`);
@@ -117,6 +253,18 @@ router.post('/users/:id', (req, res) => {
       db.prepare("DELETE FROM sessions WHERE json_extract(sess, '$.userId') = ? AND sid != ?").run(target.id, req.sessionID);
       req.flash('success', `Password reset for ${target.username}.`);
     }
+  } else if (req.body.action === 'sections') {
+    const valid = new Set(getSections().map((s) => s.id));
+    const chosen = (Array.isArray(req.body.section) ? req.body.section : [req.body.section])
+      .map(Number).filter((id) => valid.has(id));
+    db.transaction(() => {
+      db.prepare('DELETE FROM teacher_sections WHERE user_id = ?').run(target.id);
+      const add = db.prepare('INSERT INTO teacher_sections (user_id, section_id) VALUES (?, ?)');
+      for (const id of chosen) add.run(target.id, id);
+    })();
+    req.flash('success', chosen.length
+      ? `${target.name} can now mark ${chosen.length} section${chosen.length === 1 ? '' : 's'}.`
+      : `${target.name} can now mark all sections.`);
   } else if (req.body.action === 'toggle') {
     if (target.id === req.user.id) {
       req.flash('error', 'You cannot disable your own account.');

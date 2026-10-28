@@ -16,7 +16,7 @@
     <% if (ledger.pending) { %>
       <div class="small">Pending</div>
       <div class="big"><%= fmt.money(ledger.pending) %></div>
-      <div class="small"><%= dates.monthsSummary(ledger.unpaidMonths) %></div>
+      <div class="small"><%= dues %></div>
     <% } else { %>
       <div class="small">Nothing pending</div>
       <div class="small">A payment now will be counted as advance for the coming month(s).</div>

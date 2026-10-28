@@ -1,11 +1,14 @@
 const express = require('express');
-const { db, getSections, getSetting } = require('../db');
+const { db, getSections } = require('../db');
 const { requireAdmin } = require('../lib/auth');
-const { buildLedgers, ledgerFor, monthlyFee } = require('../lib/ledger');
 const {
-  today, currentMonth, billingStartFor, monthsSummary, isDate, isMonth,
+  buildLedgers, ledgerFor, monthlyFee, paymentLines, duesSummary,
+} = require('../lib/ledger');
+const { feeReminderLink } = require('../lib/messages');
+const {
+  today, currentMonth, billingStartFor, isDate, isMonth,
 } = require('../lib/dates');
-const { money, waLink } = require('../lib/format');
+const { money } = require('../lib/format');
 
 const router = express.Router();
 router.use('/students', requireAdmin);
@@ -30,15 +33,6 @@ function parseStudent(body, sections) {
   if (!data.billing_start && isDate(data.join_date)) data.billing_start = billingStartFor(data.join_date);
   if (!isMonth(data.billing_start)) errors.push('Billing start month is invalid.');
   return { data, errors };
-}
-
-function reminderLink(student, label, ledger) {
-  if (!ledger || ledger.pending <= 0 || !student.phone) return null;
-  const center = getSetting('center_name');
-  const text = `Dear ${student.parent_name || 'Parent'}, this is a gentle reminder that the tuition fee of `
-    + `${money(ledger.pending)} for ${student.name} (Class ${label}) is pending for `
-    + `${monthsSummary(ledger.unpaidMonths)}. Kindly pay at the earliest. Thank you. - ${center}`;
-  return waLink(student.phone, text);
 }
 
 router.get('/students', (req, res) => {
@@ -121,17 +115,8 @@ router.get('/students/:id', loadStudent, (req, res) => {
   const label = sections.find((x) => x.id === s.section_id)?.label;
   const ledger = ledgerFor(s.id);
 
-  const allocations = db.prepare(`
-    SELECT pm.payment_id, pm.month FROM payment_months pm
-    JOIN payments p ON p.id = pm.payment_id WHERE p.student_id = ? ORDER BY pm.month
-  `).all(s.id);
-  const monthsByPayment = new Map();
-  for (const a of allocations) {
-    if (!monthsByPayment.has(a.payment_id)) monthsByPayment.set(a.payment_id, []);
-    monthsByPayment.get(a.payment_id).push(a.month);
-  }
   const payments = db.prepare('SELECT * FROM payments WHERE student_id = ? ORDER BY paid_on DESC, id DESC').all(s.id)
-    .map((p) => ({ ...p, months: monthsSummary(monthsByPayment.get(p.id) || []) }));
+    .map((p) => ({ ...p, months: paymentLines(p.id).map((l) => l.label).join(', ') }));
 
   const att = db.prepare(`
     SELECT COUNT(*) AS total, COALESCE(SUM(status = 'P'), 0) AS present,
@@ -147,13 +132,49 @@ router.get('/students/:id', loadStudent, (req, res) => {
     student: s,
     label,
     ledger,
+    dues: duesSummary(ledger),
     fee: monthlyFee(s),
     months: [...ledger.months].reverse(),
     payments,
     att,
     absences,
-    reminder: reminderLink(s, label, ledger),
+    reminder: feeReminderLink(s, label, ledger),
+    month: currentMonth(),
   });
+});
+
+// ---------- One-time fees on one student ----------
+
+router.post('/students/:id/charges', loadStudent, (req, res) => {
+  const title = clean(req.body.title, 80);
+  const amount = Number(req.body.amount);
+  const month = isMonth(req.body.month) ? req.body.month : currentMonth();
+  if (!title || !Number.isInteger(amount) || amount <= 0 || amount > 10000000) {
+    req.flash('error', 'Enter a name and a whole-rupee amount for the fee.');
+  } else {
+    db.prepare('INSERT INTO charges (student_id, title, amount, month, created_by) VALUES (?, ?, ?, ?, ?)')
+      .run(req.student.id, title, amount, month, req.user.id);
+    req.flash('success', `${title} of ${money(amount)} added.`);
+  }
+  res.redirect(`/students/${req.student.id}`);
+});
+
+router.post('/students/:id/charges/:chargeId/remove', loadStudent, (req, res) => {
+  const charge = db.prepare('SELECT * FROM charges WHERE id = ? AND student_id = ? AND voided = 0')
+    .get(Number(req.params.chargeId), req.student.id);
+  const paid = charge && db.prepare(`
+    SELECT COALESCE(SUM(pc.amount), 0) AS n FROM payment_charges pc JOIN payments p ON p.id = pc.payment_id
+    WHERE pc.charge_id = ? AND p.voided = 0
+  `).get(charge.id).n;
+  if (!charge) {
+    req.flash('error', 'Fee not found.');
+  } else if (paid > 0) {
+    req.flash('error', 'Part of this fee has been paid. Void that receipt first, then remove the fee.');
+  } else {
+    db.prepare('UPDATE charges SET voided = 1 WHERE id = ?').run(charge.id);
+    req.flash('success', `${charge.title} removed.`);
+  }
+  res.redirect(`/students/${req.student.id}`);
 });
 
 router.get('/students/:id/edit', loadStudent, (req, res) => {

@@ -3,8 +3,20 @@
 
 <% if (user.role === 'admin') { %>
 <div class="card flush">
+  <h2>Money</h2>
+  <ul class="list" style="margin-top:12px">
+    <li><a class="row" href="/dues"><div class="main"><div class="title">Dues</div><div class="meta">Who owes fees, WhatsApp reminders, export</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/fees"><div class="main"><div class="title">One-time fees</div><div class="meta">Admission, exam, books… for a class or everyone</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/expenses"><div class="main"><div class="title">Expenses &amp; profit</div><div class="meta">Rent, salaries and what's left</div></div><%- icon('chevron', 'chev') %></a></li>
+  </ul>
+</div>
+
+<div class="card flush">
   <h2>Manage</h2>
   <ul class="list" style="margin-top:12px">
+    <li><a class="row" href="/students/new"><div class="main"><div class="title">Add student</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/import"><div class="main"><div class="title">Import students</div><div class="meta">From an Excel or CSV file</div></div><%- icon('chevron', 'chev') %></a></li>
+    <li><a class="row" href="/classes"><div class="main"><div class="title">Classes</div><div class="meta">Add classes and divisions</div></div><%- icon('chevron', 'chev') %></a></li>
     <li><a class="row" href="/settings"><div class="main"><div class="title">Settings &amp; fees</div><div class="meta">Center details on receipts, monthly fee per class, holiday months</div></div><%- icon('chevron', 'chev') %></a></li>
     <li><a class="row" href="/users"><div class="main"><div class="title">Users</div><div class="meta">Admin and teacher logins</div></div><%- icon('chevron', 'chev') %></a></li>
     <li><a class="row" href="/promote"><div class="main"><div class="title">Year-end promotion</div><div class="meta">Move 8th → 9th → 10th, mark 10th as passed out</div></div><%- icon('chevron', 'chev') %></a></li>

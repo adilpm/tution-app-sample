@@ -1,0 +1,55 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>Classes</h1>
+  <div class="sub">Classes and their divisions. Monthly fees are changed in <a href="/settings">Settings</a>.</div>
+</div>
+
+<div class="grid main-side">
+  <div>
+    <% for (const c of classes) { %>
+    <div class="card">
+      <h2><%= c.name %> standard
+        <span class="link muted"><%= fmt.money(c.current && c.current.amount) %>/month</span></h2>
+      <% if (!c.sections.length) { %>
+        <p class="muted small">No divisions.</p>
+        <form method="post" action="/classes/<%= c.id %>/delete" data-confirm="Delete <%= c.name %>?">
+          <button class="btn sm danger" type="submit">Delete class</button>
+        </form>
+      <% } else { %>
+      <div class="section-grid" style="margin-bottom:14px">
+        <% for (const s of c.sections) { %>
+          <div class="section-tile" style="position:relative">
+            <div class="name"><%= s.label %></div>
+            <div class="info"><%= s.active %> student<%= s.active === 1 ? '' : 's' %></div>
+            <% if (s.total === 0) { %>
+              <form method="post" action="/sections/<%= s.id %>/delete" data-confirm="Delete <%= s.label %>?" style="margin-top:6px">
+                <button class="btn sm danger" type="submit" style="min-height:26px; padding:2px 10px; font-size:.72rem">Delete</button>
+              </form>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+      <% } %>
+      <form method="post" action="/classes/<%= c.id %>/sections" class="inline">
+        <div><label for="div-<%= c.id %>">New division</label><input type="text" id="div-<%= c.id %>" name="division" maxlength="3" placeholder="e.g. E" autocapitalize="characters" required></div>
+        <button class="btn" type="submit">Add division</button>
+      </form>
+    </div>
+    <% } %>
+  </div>
+
+  <form method="post" action="/classes" class="card">
+    <h2>Add a class</h2>
+    <div class="form-row">
+      <div class="field"><label for="grade">Class (number)</label><input type="number" id="grade" name="grade" min="1" max="12" step="1" required placeholder="e.g. 7" inputmode="numeric"></div>
+      <div class="field"><label for="fee">Monthly fee (₹)</label><input type="number" id="fee" name="fee" min="1" step="1" required placeholder="2500" inputmode="numeric"></div>
+    </div>
+    <div class="field">
+      <label for="divisions">Divisions</label>
+      <input type="text" id="divisions" name="divisions" value="A, B, C, D" required>
+      <div class="help">Separate with commas. Year-end promotion moves students to the same division of the next class.</div>
+    </div>
+    <button class="btn primary block" type="submit">Add class</button>
+  </form>
+</div>
+<%- include('partials/footer') %>

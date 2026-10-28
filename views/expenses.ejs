@@ -1,0 +1,106 @@
+<%- include('partials/header') %>
+<% const profit = income - spent; %>
+<div class="page-head">
+  <h1>Expenses</h1>
+  <div class="sub">Money going out, and what's left after fees come in.</div>
+</div>
+
+<div class="chips">
+  <% for (const [key, name] of ranges) { %>
+    <a class="chip <%= period.range === key ? 'active' : '' %>" href="/expenses?range=<%= key %>"><%= name %></a>
+  <% } %>
+  <% if (period.range === 'custom') { %><span class="chip active">Custom</span><% } %>
+</div>
+<details class="card" style="padding:12px 20px" <%= period.range === 'custom' ? 'open' : '' %>>
+  <summary class="small">Custom dates</summary>
+  <form method="get" action="/expenses" class="inline">
+    <div><label for="from">From</label><input type="date" id="from" name="from" value="<%= period.from %>" max="<%= today %>" required></div>
+    <div><label for="to">To</label><input type="date" id="to" name="to" value="<%= period.to %>" max="<%= today %>" required></div>
+    <button class="btn primary" type="submit">Apply</button>
+  </form>
+</details>
+
+<div class="stats">
+  <div class="stat hero">
+    <div class="label">Profit · <%= periodLabel %></div>
+    <div class="value"><%= profit < 0 ? '−' : '' %><%= fmt.money(Math.abs(profit)) %></div>
+    <div class="hint">Fees collected minus expenses</div>
+  </div>
+  <div class="stat"><div class="label">Fees collected</div><div class="value good-text"><%= fmt.money(income) %></div></div>
+  <div class="stat"><div class="label">Expenses</div><div class="value bad-text"><%= fmt.money(spent) %></div><div class="hint"><%= expenses.length %> entries</div></div>
+</div>
+
+<div class="grid main-side">
+  <div>
+    <div class="card flush">
+      <h2>Expenses · <%= periodLabel %></h2>
+      <% if (!expenses.length) { %>
+        <div class="empty">No expenses recorded for this period.</div>
+      <% } else { %>
+      <ul class="list" style="margin-top:10px">
+        <% for (const e of expenses) { %>
+          <li class="row">
+            <div class="main">
+              <div class="title"><%= e.category %></div>
+              <div class="meta"><%= dates.dateLabel(e.date) %><%= e.note ? ' · ' + e.note : '' %></div>
+            </div>
+            <div class="end"><b><%= fmt.money(e.amount) %></b></div>
+            <form method="post" action="/expenses/<%= e.id %>/delete" data-confirm="Delete this <%= e.category %> expense of <%= fmt.money(e.amount) %>?">
+              <button class="btn sm danger" type="submit" aria-label="Delete expense">Delete</button>
+            </form>
+          </li>
+        <% } %>
+      </ul>
+      <% } %>
+    </div>
+
+    <div class="card flush">
+      <h2>Last 6 months</h2>
+      <div class="table-wrap" style="margin-top:8px">
+        <table>
+          <thead><tr><th>Month</th><th class="r">Fees</th><th class="r">Expenses</th><th class="r">Profit</th></tr></thead>
+          <tbody>
+          <% for (const t of trend) { %>
+            <tr>
+              <td><%= dates.monthLabel(t.month) %></td>
+              <td class="r num"><%= fmt.money(t.income) %></td>
+              <td class="r num"><%= fmt.money(t.expense) %></td>
+              <td class="r num <%= t.profit < 0 ? 'bad-text' : '' %>"><b><%= t.profit < 0 ? '−' : '' %><%= fmt.money(Math.abs(t.profit)) %></b></td>
+            </tr>
+          <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <form method="post" action="/expenses" class="card">
+      <h2>Add expense</h2>
+      <div class="field">
+        <label for="category">Category</label>
+        <input type="text" id="category" name="category" list="categories" maxlength="40" required placeholder="e.g. Rent">
+        <datalist id="categories"><% for (const c of CATEGORIES) { %><option value="<%= c %>"><% } %></datalist>
+      </div>
+      <div class="form-row">
+        <div class="field"><label for="amount">Amount (₹)</label><input type="number" id="amount" name="amount" min="1" step="1" required inputmode="numeric"></div>
+        <div class="field"><label for="date">Date</label><input type="date" id="date" name="date" value="<%= today %>" max="<%= today %>" required></div>
+      </div>
+      <div class="field"><label for="note">Note (optional)</label><input type="text" id="note" name="note" maxlength="200"></div>
+      <button class="btn primary block" type="submit">Save expense</button>
+    </form>
+
+    <% if (categories.length) { %>
+    <div class="card">
+      <h2>By category</h2>
+      <% for (const [name, amount] of categories) { const p = spent ? Math.round(amount / spent * 100) : 0; %>
+        <div style="margin-bottom:12px">
+          <div style="display:flex; justify-content:space-between; font-size:.9rem"><span><%= name %></span><b><%= fmt.money(amount) %></b></div>
+          <div class="progress" style="margin-top:4px"><span style="width:<%= p %>%"></span></div>
+        </div>
+      <% } %>
+    </div>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/footer') %>

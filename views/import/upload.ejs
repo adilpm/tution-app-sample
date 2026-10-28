@@ -1,0 +1,33 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <h1>Import students</h1>
+  <div class="sub">Add many students at once from an Excel or CSV file.</div>
+</div>
+
+<div class="grid two">
+  <div class="card">
+    <h2>1. Get the template</h2>
+    <p class="small muted" style="margin-top:0">One student per row. Columns:</p>
+    <ul class="small" style="padding-left:18px; margin:0 0 14px">
+      <li><b>Name</b>: required</li>
+      <li><b>Parent name</b>, <b>Phone</b>: optional</li>
+      <li><b>Class</b> and <b>Division</b>: like 8 and A (or "8A" in the Class column)</li>
+      <li><b>Join date</b>: like 01-06-2026. Empty means today.</li>
+    </ul>
+    <a class="btn" href="/import/template.xlsx"><%- icon('download') %>Download template</a>
+  </div>
+
+  <form method="post" action="/import/preview" class="card" data-file-form>
+    <h2>2. Upload your file</h2>
+    <% if (error) { %><div class="flash error"><%= error %></div><% } %>
+    <input type="hidden" name="file" data-file-target>
+    <input type="hidden" name="filename" data-file-name>
+    <div class="field">
+      <label for="import-file">Excel (.xlsx) or CSV file</label>
+      <input type="file" id="import-file" accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv" data-file-source data-max-bytes="3145728" required>
+      <div class="help">You'll see a preview before anything is saved.</div>
+    </div>
+    <button class="btn primary block" type="submit">Check file</button>
+  </form>
+</div>
+<%- include('../partials/footer') %>

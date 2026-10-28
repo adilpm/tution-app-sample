@@ -20,6 +20,23 @@
             </form>
             <% } %>
           </div>
+          <% if (u.role === 'teacher') { %>
+          <details style="margin-top:6px">
+            <summary class="small">Sections: <%= u.sections.size ? sections.filter((s) => u.sections.has(s.id)).map((s) => s.label).join(', ') : 'all' %></summary>
+            <form method="post" action="/users/<%= u.id %>">
+              <input type="hidden" name="action" value="sections">
+              <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; margin-bottom:12px">
+                <% for (const s of sections) { %>
+                  <label style="display:flex; align-items:center; gap:6px; font-weight:400; margin:0">
+                    <input type="checkbox" name="section" value="<%= s.id %>" <%= u.sections.has(s.id) ? 'checked' : '' %>> <%= s.label %>
+                  </label>
+                <% } %>
+              </div>
+              <p class="help small muted" style="margin:0 0 10px">Leave all unticked to let this teacher mark every section.</p>
+              <button class="btn sm primary" type="submit">Save sections</button>
+            </form>
+          </details>
+          <% } %>
           <details style="margin-top:6px">
             <summary class="small">Reset password</summary>
             <form method="post" action="/users/<%= u.id %>" class="inline">

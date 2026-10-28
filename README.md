@@ -10,8 +10,15 @@ Node.js + Express + SQLite, server-rendered pages, mobile-first.
 - **Dashboard**: collected this month, % of this month's fees paid, total pending, overdue students (2+ months), collections by section, a 6-month trend, and today's attendance.
 - **Attendance**: pick a section, everyone starts as present, tap the absentees, save. Monthly report per section.
 - **Payments report**: quick filters (Today, Yesterday, Last 7 days, Last 30 days, This month, Last month, custom dates), Cash/UPI totals, and export to PDF, Excel (.xlsx) or CSV. Receipts are voided, never deleted.
-- **Settings**: center details printed on receipts, monthly fee per class with history, months with no fee.
-- **Users**: admin (everything) and teacher (attendance only).
+- **Dues**: who owes what, filter by class or months overdue, one-tap WhatsApp reminders (remembers who was reminded today), PDF/Excel export.
+- **One-time fees**: admission, exam, books… for one student, a section, a class or everyone. Paid before that month's monthly fee.
+- **Expenses**: record rent, salaries etc. and see fees vs. expenses vs. profit by period and month.
+- **Attendance alerts**: after saving attendance, one-tap WhatsApp messages to absentees' parents.
+- **Import students** from Excel or CSV, with a preview that flags bad rows and duplicates.
+- **Settings**: center details and logo printed on receipts (with ₹), monthly fee per class with history, months with no fee.
+- **Classes**: add classes and divisions; delete ones never used.
+- **Users**: admin (everything) and teacher (attendance only, optionally limited to chosen sections).
+- **Desktop sidebar** navigation; phones use the bottom tab bar.
 - **Year-end promotion**: 8th → 9th → 10th, and 10th is marked passed out. History is kept.
 
 ## How fees work

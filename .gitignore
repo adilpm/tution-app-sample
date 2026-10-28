@@ -5,3 +5,4 @@ backups/
 *.db
 *.db-wal
 *.db-shm
+.claude/launch.json

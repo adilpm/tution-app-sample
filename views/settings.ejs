@@ -22,6 +22,27 @@
   </form>
 
   <div class="card">
+    <h2>Logo</h2>
+    <p class="muted small" style="margin-top:-6px">Shown on receipts, reports and in the sidebar. PNG or JPG, under 1 MB; a square image works best.</p>
+    <% if (hasLogo) { %>
+      <div style="display:flex; align-items:center; gap:14px; margin-bottom:14px">
+        <img src="/logo?v=<%= Date.now() %>" alt="Current logo" style="width:64px; height:64px; object-fit:contain; border-radius:12px; background:var(--bg)">
+        <form method="post" action="/settings/logo/remove" data-confirm="Remove the logo?">
+          <button class="btn sm danger" type="submit">Remove logo</button>
+        </form>
+      </div>
+    <% } %>
+    <form method="post" action="/settings/logo" data-file-form>
+      <input type="hidden" name="logo" data-file-target>
+      <div class="field">
+        <label for="logo-file"><%= hasLogo ? 'Replace logo' : 'Upload logo' %></label>
+        <input type="file" id="logo-file" accept="image/png,image/jpeg" data-file-source data-max-bytes="1048576" required>
+      </div>
+      <button class="btn primary block" type="submit">Save logo</button>
+    </form>
+  </div>
+
+  <div class="card">
     <h2>Monthly fees</h2>
     <p class="muted small" style="margin-top:-6px">A new fee applies from the month you choose. Earlier months keep their old fee.</p>
     <% for (const c of classes) { %>

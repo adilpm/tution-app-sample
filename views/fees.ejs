@@ -1,0 +1,57 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <h1>One-time fees</h1>
+  <div class="sub">Admission, exam, books and other fees, added for many students at once. They show up as pending and on receipts.</div>
+</div>
+
+<div class="grid two">
+  <form method="post" action="/fees" class="card">
+    <h2>Add a fee</h2>
+    <div class="field">
+      <label for="title">Fee name</label>
+      <input type="text" id="title" name="title" list="fee-names" maxlength="80" required placeholder="e.g. Exam fee">
+      <datalist id="fee-names"><option value="Admission fee"><option value="Exam fee"><option value="Books"><option value="Study material"><option value="Uniform"></datalist>
+    </div>
+    <div class="form-row">
+      <div class="field"><label for="amount">Amount per student (₹)</label><input type="number" id="amount" name="amount" min="1" step="1" required inputmode="numeric"></div>
+      <div class="field"><label for="month">Month</label><input type="month" id="month" name="month" value="<%= month %>"></div>
+    </div>
+    <div class="field">
+      <label for="target">Apply to</label>
+      <select id="target" name="target" required>
+        <option value="all">All active students</option>
+        <optgroup label="Whole class">
+          <% for (const c of classes) { %><option value="class:<%= c.id %>"><%= c.name %> (all divisions)</option><% } %>
+        </optgroup>
+        <optgroup label="One section">
+          <% for (const s of sections) { %><option value="section:<%= s.id %>"><%= s.label %></option><% } %>
+        </optgroup>
+      </select>
+      <div class="help">For a single student, open their profile and use "Other fees".</div>
+    </div>
+    <button class="btn primary block" type="submit">Add fee</button>
+  </form>
+
+  <div class="card flush">
+    <h2>Recently added</h2>
+    <% if (!batches.length) { %>
+      <div class="empty">No one-time fees yet.</div>
+    <% } else { %>
+    <ul class="list" style="margin-top:10px">
+      <% for (const b of batches) { const expected = b.amount * b.students; %>
+        <li class="row">
+          <div class="main">
+            <div class="title"><%= b.title %> · <%= fmt.money(b.amount) %></div>
+            <div class="meta"><%= dates.monthLabel(b.month) %> · <%= b.students %> student<%= b.students === 1 ? '' : 's' %> · added <%= dates.dateLabel(b.added_on) %></div>
+          </div>
+          <div class="end small">
+            <b><%= fmt.money(b.collected) %></b>
+            <div class="meta">of <%= fmt.money(expected) %></div>
+          </div>
+        </li>
+      <% } %>
+    </ul>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/footer') %>

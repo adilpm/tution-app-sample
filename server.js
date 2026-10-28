@@ -13,6 +13,7 @@ const { loadUser, requireLogin, ensureAdmin } = require('./lib/auth');
 const format = require('./lib/format');
 const dates = require('./lib/dates');
 const { icon } = require('./lib/icons');
+const { logoPath } = require('./lib/pdf-kit');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -33,7 +34,12 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1d' }));
-app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+// File uploads (logo, student import) arrive base64-encoded in a form field,
+// so only those two endpoints accept large bodies.
+const BIG_FORMS = new Set(['/settings/logo', '/import/preview']);
+const bigForm = express.urlencoded({ extended: false, limit: '6mb' });
+const smallForm = express.urlencoded({ extended: false, limit: '100kb' });
+app.use((req, res, next) => (BIG_FORMS.has(req.path) ? bigForm : smallForm)(req, res, next));
 
 let secret = process.env.SESSION_SECRET || getSetting('session_secret');
 if (!secret) {
@@ -76,6 +82,7 @@ app.use((req, res, next) => {
   req.flash = (type, message) => { req.session.flash = { type, message }; };
 
   res.locals.settings = getSettings();
+  res.locals.hasLogo = !!logoPath();
   res.locals.path = req.path;
   res.locals.fmt = format;
   res.locals.dates = dates;
@@ -90,6 +97,9 @@ app.use(require('./routes/dashboard'));
 app.use(require('./routes/students'));
 app.use(require('./routes/payments'));
 app.use(require('./routes/attendance'));
+app.use(require('./routes/fees'));
+app.use(require('./routes/expenses'));
+app.use(require('./routes/import'));
 app.use(require('./routes/admin'));
 
 app.use((req, res) => {

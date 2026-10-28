@@ -1,0 +1,67 @@
+<%- include('partials/header') %>
+<%
+  const qs = (over) => {
+    const p = { section, min: min > 1 ? min : null, ...over };
+    const s = Object.entries(p).filter(([, v]) => v).map(([k, v]) => `${k}=${v}`).join('&');
+    return `/dues${s ? '?' + s : ''}`;
+  };
+%>
+<div class="page-head">
+  <h1>Dues</h1>
+  <div class="sub">Who owes fees, with one-tap WhatsApp reminders.</div>
+</div>
+
+<div class="chips">
+  <a class="chip <%= !section ? 'active' : '' %>" href="<%= qs({ section: null }) %>">All classes</a>
+  <% for (const s of sections) { %>
+    <a class="chip <%= section === s.id ? 'active' : '' %>" href="<%= qs({ section: s.id }) %>"><%= s.label %></a>
+  <% } %>
+</div>
+<div class="chips">
+  <a class="chip <%= min === 1 ? 'active' : '' %>" href="<%= qs({ min: null }) %>">Any amount due</a>
+  <a class="chip <%= min === 2 ? 'active' : '' %>" href="<%= qs({ min: 2 }) %>">2+ months</a>
+  <a class="chip <%= min === 3 ? 'active' : '' %>" href="<%= qs({ min: 3 }) %>">3+ months</a>
+</div>
+
+<div class="stats">
+  <div class="stat hero">
+    <div class="label">Pending · <%= filterLabel %></div>
+    <div class="value"><%= fmt.money(total) %></div>
+    <div class="hint"><%= rows.length %> student<%= rows.length === 1 ? '' : 's' %></div>
+  </div>
+  <div class="stat">
+    <div class="label">Reminders sent today</div>
+    <div class="value"><span id="sent-count">0</span><span class="muted" style="font-size:1rem; font-weight:500"> / <%= rows.filter((r) => r.reminder).length %></span></div>
+    <div class="hint">Tracked on this device</div>
+  </div>
+</div>
+
+<div class="btn-row" style="margin-bottom:20px">
+  <a class="btn sm" href="/dues.pdf<%= query ? '?' + query : '' %>"><%- icon('download') %>PDF</a>
+  <a class="btn sm" href="/dues.xlsx<%= query ? '?' + query : '' %>"><%- icon('download') %>Excel</a>
+</div>
+
+<div class="card flush">
+  <% if (!rows.length) { %>
+    <div class="empty">Nobody owes anything here. 🎉</div>
+  <% } else { %>
+  <ul class="list" data-reminders="<%= today %>">
+    <% for (const r of rows) { %>
+      <li class="row">
+        <div class="avatar"><%= fmt.initials(r.name) %></div>
+        <a class="main" href="/students/<%= r.id %>" style="color:inherit">
+          <div class="title"><%= r.name %> <span class="muted small" style="font-weight:400">· <%= r.label %></span>
+            <% if (r.status !== 'active') { %><span class="badge"><%= r.status === 'left' ? 'Left' : 'Passed out' %></span><% } %></div>
+          <div class="meta"><b class="bad-text"><%= fmt.money(r.pending) %></b> · <%= r.dues %></div>
+        </a>
+        <% if (r.reminder) { %>
+          <a class="btn sm" href="<%= r.reminder %>" target="_blank" rel="noopener" data-remind="<%= r.id %>"><%- icon('chat') %><span>Remind</span></a>
+        <% } else { %>
+          <span class="badge" title="No phone number">No phone</span>
+        <% } %>
+      </li>
+    <% } %>
+  </ul>
+  <% } %>
+</div>
+<%- include('partials/footer') %>

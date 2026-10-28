@@ -1,12 +1,15 @@
 const express = require('express');
 const { db, getSections, getSettings } = require('../db');
 const { requireAdmin } = require('../lib/auth');
-const { buildLedgers, ledgerFor, monthlyFee, allocate } = require('../lib/ledger');
+const {
+  buildLedgers, ledgerFor, monthlyFee, allocate, saveAllocation, paymentLines, duesSummary,
+} = require('../lib/ledger');
+const {
+  RANGES, resolveRange, rangeLabel, rangeQuery,
+} = require('../lib/ranges');
 const { writeReceipt } = require('../lib/receipt');
 const { writePaymentsPdf, writePaymentsXlsx } = require('../lib/report');
-const {
-  today, currentMonth, addMonths, addDays, lastDayOfMonth, monthsSummary, isDate, isMonth, dateLabel,
-} = require('../lib/dates');
+const { today, monthsSummary, isDate } = require('../lib/dates');
 const { money, waLink, csvRow } = require('../lib/format');
 
 const router = express.Router();
@@ -44,6 +47,7 @@ function renderCollectForm(res, student, form, error, status = 200) {
     student,
     label,
     ledger,
+    dues: duesSummary(ledger),
     fee,
     form: {
       amount: ledger.pending > 0 ? ledger.pending : fee,
@@ -101,8 +105,7 @@ router.post('/collect/:id', (req, res) => {
         INSERT INTO payments (receipt_no, student_id, amount, method, paid_on, note, collected_by)
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `).run(receiptNo, student.id, amount, form.method, form.paid_on, form.note || null, req.user.id).lastInsertRowid;
-      const insertPart = db.prepare('INSERT INTO payment_months (payment_id, month, amount) VALUES (?, ?, ?)');
-      for (const p of parts) insertPart.run(id, p.month, p.amount);
+      saveAllocation(id, parts);
       return id;
     })();
   } catch (err) {
@@ -124,17 +127,18 @@ function loadPayment(id) {
   `).get(Number(id));
   if (!payment) return null;
   const student = db.prepare('SELECT * FROM students WHERE id = ?').get(payment.student_id);
-  const months = db.prepare('SELECT month, amount FROM payment_months WHERE payment_id = ? ORDER BY month').all(payment.id);
-  return { payment, student, months, label: sectionLabels().get(student.section_id) };
+  return {
+    payment, student, lines: paymentLines(payment.id), label: sectionLabels().get(student.section_id),
+  };
 }
 
 router.get('/payments/:id(\\d+)', (req, res) => {
   const data = loadPayment(req.params.id);
   if (!data) return res.status(404).render('error', { title: 'Not found', message: 'Receipt not found.' });
-  const { payment, student, months, label } = data;
+  const { payment, student, lines, label } = data;
   const center = res.locals.settings.center_name;
   const shareText = `Payment received: ${money(payment.amount)} from ${student.name} (Class ${label}) `
-    + `for ${monthsSummary(months.map((m) => m.month))}. Receipt No: ${payment.receipt_no}, `
+    + `for ${lines.map((l) => l.label).join(', ')}. Receipt No: ${payment.receipt_no}, `
     + `Date: ${res.locals.dates.dateLabel(payment.paid_on)}. Thank you! - ${center}`;
   const ledger = ledgerFor(student.id);
   res.render('collect/receipt', {
@@ -149,7 +153,7 @@ router.get('/payments/:id(\\d+)', (req, res) => {
 router.get('/payments/:id(\\d+)/pdf', (req, res) => {
   const data = loadPayment(req.params.id);
   if (!data) return res.status(404).send('Receipt not found');
-  const { payment, student, months, label } = data;
+  const { payment, student, lines, label } = data;
   const slug = student.name.replace(/[^a-z0-9]+/gi, '_').replace(/^_|_$/g, '');
   const filename = `${payment.receipt_no}_${slug}.pdf`;
   res.set({
@@ -161,7 +165,7 @@ router.get('/payments/:id(\\d+)/pdf', (req, res) => {
     payment,
     student,
     sectionLabel: label,
-    months,
+    lines,
     settings: getSettings(),
     collectedBy: payment.collected_by_name,
   });
@@ -185,51 +189,13 @@ router.post('/payments/:id(\\d+)/void', (req, res) => {
 
 // ---------- Payments report ----------
 
-const RANGES = [
-  ['today', 'Today'],
-  ['yesterday', 'Yesterday'],
-  ['7d', 'Last 7 days'],
-  ['30d', 'Last 30 days'],
-  ['this_month', 'This month'],
-  ['last_month', 'Last month'],
-];
-
-// Turns ?range=... (or ?from=&to=, or the older ?month=) into an inclusive date range.
-function resolveRange(query) {
-  const t = today();
-  const thisMonth = currentMonth();
-  const lastMonth = addMonths(thisMonth, -1);
-  const presets = {
-    today: [t, t],
-    yesterday: [addDays(t, -1), addDays(t, -1)],
-    '7d': [addDays(t, -6), t],
-    '30d': [addDays(t, -29), t],
-    this_month: [`${thisMonth}-01`, t],
-    last_month: [`${lastMonth}-01`, lastDayOfMonth(lastMonth)],
-  };
-  if (presets[query.range]) {
-    const [from, to] = presets[query.range];
-    return { range: query.range, from, to };
-  }
-  if (isDate(query.from) && isDate(query.to)) {
-    const [from, to] = query.from <= query.to ? [query.from, query.to] : [query.to, query.from];
-    return { range: 'custom', from, to: to > t ? t : to };
-  }
-  if (isMonth(query.month)) {
-    return { range: 'custom', from: `${query.month}-01`, to: lastDayOfMonth(query.month) };
-  }
-  return { range: 'this_month', from: presets.this_month[0], to: t };
-}
-
-function rangeLabel({ from, to }) {
-  return from === to ? dateLabel(from) : `${dateLabel(from)} – ${dateLabel(to)}`;
-}
-
 function paymentsInRange(from, to) {
   const labels = sectionLabels();
   return db.prepare(`
     SELECT p.*, s.name AS student_name, s.section_id, u.name AS collected_by_name,
-           (SELECT group_concat(month) FROM (SELECT month FROM payment_months WHERE payment_id = p.id ORDER BY month)) AS months
+           (SELECT group_concat(month) FROM (SELECT month FROM payment_months WHERE payment_id = p.id ORDER BY month)) AS months,
+           (SELECT group_concat(c.title, ', ') FROM payment_charges pc JOIN charges c ON c.id = pc.charge_id
+             WHERE pc.payment_id = p.id) AS charge_titles
     FROM payments p
     JOIN students s ON s.id = p.student_id
     LEFT JOIN users u ON u.id = p.collected_by
@@ -238,7 +204,7 @@ function paymentsInRange(from, to) {
   `).all(from, to).map((p) => ({
     ...p,
     label: labels.get(p.section_id),
-    monthsText: monthsSummary(p.months ? p.months.split(',') : []),
+    monthsText: [monthsSummary(p.months ? p.months.split(',') : []), p.charge_titles].filter(Boolean).join(', '),
   }));
 }
 
@@ -264,10 +230,7 @@ function reportData(query) {
 
 router.get('/payments', (req, res) => {
   const data = reportData(req.query);
-  const { period } = data;
-  const exportQuery = period.range === 'custom'
-    ? `from=${period.from}&to=${period.to}`
-    : `range=${period.range}`;
+  const exportQuery = rangeQuery(data.period);
   res.render('payments', {
     title: 'Payments', ranges: RANGES, exportQuery, ...data,
   });

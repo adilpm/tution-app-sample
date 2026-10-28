@@ -1,5 +1,6 @@
 const express = require('express');
 const { db, getSections } = require('../db');
+const { absenceAlertLink } = require('../lib/messages');
 const {
   today, currentMonth, isDate, isMonth, dateLabel,
 } = require('../lib/dates');
@@ -9,9 +10,20 @@ const router = express.Router();
 const asList = (v) => (v == null ? [] : Array.isArray(v) ? v : [v]).map(Number);
 const pickDate = (d) => (isDate(d) && d <= today() ? d : today());
 
-function findSection(id) {
-  return getSections().find((s) => s.id === Number(id));
+// Sections this user may mark: everything for admins and for teachers with no
+// assignment, otherwise only the assigned ones.
+function visibleSections(user) {
+  const sections = getSections();
+  if (user.role === 'admin') return sections;
+  const assigned = new Set(db.prepare('SELECT section_id FROM teacher_sections WHERE user_id = ?').all(user.id).map((r) => r.section_id));
+  return assigned.size ? sections.filter((s) => assigned.has(s.id)) : sections;
 }
+
+function findSection(id, user) {
+  return visibleSections(user).find((s) => s.id === Number(id));
+}
+
+const notFound = (res) => res.status(404).render('error', { title: 'Not found', message: 'Section not found.' });
 
 function sectionStudents(sectionId, date) {
   return db.prepare(`
@@ -32,7 +44,7 @@ router.get('/attendance', (req, res) => {
   `).all().map((r) => [r.section_id, r.n]));
 
   const classes = [];
-  for (const s of getSections()) {
+  for (const s of visibleSections(req.user)) {
     let group = classes.find((c) => c.grade === s.grade);
     if (!group) {
       group = { grade: s.grade, name: s.class_name, sections: [] };
@@ -44,8 +56,8 @@ router.get('/attendance', (req, res) => {
 });
 
 router.get('/attendance/:sectionId(\\d+)', (req, res) => {
-  const section = findSection(req.params.sectionId);
-  if (!section) return res.status(404).render('error', { title: 'Not found', message: 'Section not found.' });
+  const section = findSection(req.params.sectionId, req.user);
+  if (!section) return notFound(res);
   const date = pickDate(req.query.date);
   const marks = new Map(db.prepare('SELECT student_id, status FROM attendance WHERE section_id = ? AND date = ?')
     .all(section.id, date).map((r) => [r.student_id, r.status]));
@@ -56,8 +68,8 @@ router.get('/attendance/:sectionId(\\d+)', (req, res) => {
 });
 
 router.post('/attendance/:sectionId(\\d+)', (req, res) => {
-  const section = findSection(req.params.sectionId);
-  if (!section) return res.status(404).render('error', { title: 'Not found', message: 'Section not found.' });
+  const section = findSection(req.params.sectionId, req.user);
+  if (!section) return notFound(res);
   const date = req.body.date;
   if (!isDate(date) || date > today()) {
     req.flash('error', 'Attendance can only be marked for today or earlier.');
@@ -79,12 +91,26 @@ router.post('/attendance/:sectionId(\\d+)', (req, res) => {
 
   const absentCount = ids.filter((id) => absent.has(id)).length;
   req.flash('success', `${section.label} saved for ${dateLabel(date)}: ${ids.length - absentCount} present, ${absentCount} absent.`);
-  res.redirect(`/attendance?date=${date}`);
+  // With absentees, go straight to the parent alerts.
+  res.redirect(absentCount ? `/attendance/${section.id}/absent?date=${date}` : `/attendance?date=${date}`);
+});
+
+router.get('/attendance/:sectionId(\\d+)/absent', (req, res) => {
+  const section = findSection(req.params.sectionId, req.user);
+  if (!section) return notFound(res);
+  const date = pickDate(req.query.date);
+  const absentees = db.prepare(`
+    SELECT s.id, s.name, s.parent_name, s.phone FROM attendance a JOIN students s ON s.id = a.student_id
+    WHERE a.section_id = ? AND a.date = ? AND a.status = 'A' ORDER BY s.name
+  `).all(section.id, date).map((s) => ({ ...s, alert: absenceAlertLink(s, section.label, date) }));
+  res.render('attendance/absent', {
+    title: `Absent in ${section.label}`, section, date, absentees,
+  });
 });
 
 router.get('/attendance/:sectionId(\\d+)/report', (req, res) => {
-  const section = findSection(req.params.sectionId);
-  if (!section) return res.status(404).render('error', { title: 'Not found', message: 'Section not found.' });
+  const section = findSection(req.params.sectionId, req.user);
+  if (!section) return notFound(res);
   const month = isMonth(req.query.month) ? req.query.month : currentMonth();
 
   const rows = db.prepare(`

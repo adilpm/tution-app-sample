@@ -110,6 +110,46 @@ CREATE TABLE IF NOT EXISTS attendance (
 );
 CREATE INDEX IF NOT EXISTS attendance_section_date ON attendance (section_id, date);
 
+-- One-time fees (admission, exam, books...). Voided rather than deleted once
+-- anything has been paid against them.
+CREATE TABLE IF NOT EXISTS charges (
+  id INTEGER PRIMARY KEY,
+  student_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  month TEXT NOT NULL,           -- YYYY-MM it belongs to; orders it among monthly fees
+  voided INTEGER NOT NULL DEFAULT 0,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS charges_student ON charges (student_id);
+
+-- How each payment was split across one-time fees (alongside payment_months).
+CREATE TABLE IF NOT EXISTS payment_charges (
+  payment_id INTEGER NOT NULL REFERENCES payments(id),
+  charge_id INTEGER NOT NULL REFERENCES charges(id),
+  amount INTEGER NOT NULL,
+  PRIMARY KEY (payment_id, charge_id)
+);
+
+-- Sections a teacher may mark. A teacher with no rows here can mark all.
+CREATE TABLE IF NOT EXISTS teacher_sections (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  section_id INTEGER NOT NULL REFERENCES sections(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, section_id)
+);
+
+CREATE TABLE IF NOT EXISTS expenses (
+  id INTEGER PRIMARY KEY,
+  date TEXT NOT NULL,
+  category TEXT NOT NULL,
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  note TEXT,
+  created_by INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS expenses_date ON expenses (date);
+
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
@@ -161,6 +201,13 @@ function getSettings() {
   return out;
 }
 
+// 1 -> "1st", 2 -> "2nd", 11 -> "11th"
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
+}
+
 function getSections() {
   return db.prepare(`
     SELECT s.id, s.division, c.id AS class_id, c.grade, c.name AS class_name,
@@ -170,4 +217,6 @@ function getSections() {
   `).all();
 }
 
-module.exports = { db, dataDir, getSetting, setSetting, getSettings, getSections };
+module.exports = {
+  db, dataDir, dbPath, ordinal, getSetting, setSetting, getSettings, getSections,
+};

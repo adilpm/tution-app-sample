@@ -5,8 +5,8 @@
   <p style="margin-top:0">Run this once when the new academic year starts (usually June). It will:</p>
   <ul>
     <% for (const p of preview) { %>
-      <li><b><%= p.count %></b> active students in <b><%= p.grade %>th</b> →
-        <%= p.to ? `move to ${p.to}th (same division)` : 'marked as passed out (billing stops the month before)' %></li>
+      <li><b><%= p.count %></b> active students in <b>class <%= p.grade %></b> →
+        <%= p.to ? `move to class ${p.to} (same division)` : 'marked as passed out (billing stops the month before)' %></li>
     <% } %>
   </ul>
   <p class="muted small">Old fee months, receipts and attendance stay as they are. Pending fees from the previous year stay pending.

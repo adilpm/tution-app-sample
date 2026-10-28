@@ -1,0 +1,34 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <a class="back" href="/attendance?date=<%= date %>" aria-label="Back"><%- icon('back') %></a>
+  <h1>Absent in <%= section.label %></h1>
+  <div class="sub"><%= dates.dateLabel(date) %> · Tap to send each parent a WhatsApp message.</div>
+</div>
+
+<div class="card flush">
+  <% if (!absentees.length) { %>
+    <div class="empty">Nobody was absent.</div>
+  <% } else { %>
+  <ul class="list" data-reminders="absent-<%= section.id %>-<%= date %>">
+    <% for (const s of absentees) { %>
+      <li class="row">
+        <div class="avatar"><%= fmt.initials(s.name) %></div>
+        <div class="main">
+          <div class="title"><%= s.name %></div>
+          <div class="meta"><%= s.parent_name || 'Parent' %><%= s.phone ? ' · ' + s.phone : '' %></div>
+        </div>
+        <% if (s.alert) { %>
+          <a class="btn sm" href="<%= s.alert %>" target="_blank" rel="noopener" data-remind="<%= s.id %>"><%- icon('chat') %><span>Notify</span></a>
+        <% } else { %>
+          <span class="badge">No phone</span>
+        <% } %>
+      </li>
+    <% } %>
+  </ul>
+  <% } %>
+</div>
+
+<div class="btn-row" style="max-width:560px">
+  <a class="btn primary" href="/attendance?date=<%= date %>">Done</a>
+</div>
+<%- include('../partials/footer') %>

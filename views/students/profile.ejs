@@ -24,7 +24,7 @@
         <% if (ledger.pending) { %>
           <div class="small">Pending fees</div>
           <div class="big"><%= fmt.money(ledger.pending) %></div>
-          <div class="small"><%= ledger.unpaidMonths.length %> month<%= ledger.unpaidMonths.length === 1 ? '' : 's' %>: <%= dates.monthsSummary(ledger.unpaidMonths) %></div>
+          <div class="small"><%= dues %></div>
         <% } else { %>
           <div class="small">Pending fees</div>
           <div class="big">₹0</div>
@@ -83,6 +83,47 @@
         <% } %>
       </div>
       <% } %>
+    </div>
+
+    <div class="card">
+      <h2>Other fees</h2>
+      <% if (!ledger.charges.length) { %>
+        <div class="muted small" style="margin-bottom:12px">No one-time fees (admission, exam, books…).</div>
+      <% } else { %>
+      <ul class="list" style="margin:0 -20px 12px">
+        <% for (const c of ledger.charges) { %>
+          <li class="row" style="min-height:52px">
+            <div class="main">
+              <div class="title"><%= c.title %></div>
+              <div class="meta"><%= dates.monthLabel(c.month) %> · <%= fmt.money(c.charge) %></div>
+            </div>
+            <% if (c.due === 0) { %><span class="badge good">Paid</span>
+            <% } else if (c.paid > 0) { %><span class="badge warn"><%= fmt.money(c.due) %> due</span>
+            <% } else { %>
+              <span class="badge bad">Unpaid</span>
+              <form method="post" action="/students/<%= student.id %>/charges/<%= c.id %>/remove" data-confirm="Remove <%= c.title %>?">
+                <button class="btn sm danger" type="submit" aria-label="Remove <%= c.title %>">Remove</button>
+              </form>
+            <% } %>
+          </li>
+        <% } %>
+      </ul>
+      <% } %>
+      <details>
+        <summary class="small">Add a fee</summary>
+        <form method="post" action="/students/<%= student.id %>/charges">
+          <div class="field">
+            <label for="charge-title">Fee name</label>
+            <input type="text" id="charge-title" name="title" list="fee-names" maxlength="80" required placeholder="e.g. Exam fee">
+            <datalist id="fee-names"><option value="Admission fee"><option value="Exam fee"><option value="Books"><option value="Study material"><option value="Uniform"></datalist>
+          </div>
+          <div class="form-row">
+            <div class="field"><label for="charge-amount">Amount (₹)</label><input type="number" id="charge-amount" name="amount" min="1" step="1" required inputmode="numeric"></div>
+            <div class="field"><label for="charge-month">Month</label><input type="month" id="charge-month" name="month" value="<%= month %>"></div>
+          </div>
+          <button class="btn primary block" type="submit">Add fee</button>
+        </form>
+      </details>
     </div>
 
     <div class="card">

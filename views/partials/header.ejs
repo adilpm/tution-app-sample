@@ -6,24 +6,59 @@
 <meta name="theme-color" content="#f5f5f7">
 <title><%= title %> · <%= settings.center_name %></title>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=4">
+<link rel="stylesheet" href="/style.css?v=6">
 </head>
-<body>
+<body class="<%= user ? 'has-sidebar' : '' %>">
+<%
+  const isAdmin = user && user.role === 'admin';
+  const matches = (href) => {
+    if (href === '/') return path === '/';
+    if (href === '/students') return path.startsWith('/students') && path !== '/students/new';
+    return path === href || path.startsWith(href + '/');
+  };
+%>
+<% if (user) {
+  const groups = isAdmin ? [
+    [null, [['/', 'home', 'Dashboard'], ['/students', 'users', 'Students'], ['/students/new', 'userPlus', 'Add student'], ['/attendance', 'attendance', 'Attendance']]],
+    ['Money', [['/payments', 'receipt', 'Payments'], ['/dues', 'alert', 'Dues'], ['/fees', 'tag', 'One-time fees'], ['/expenses', 'wallet', 'Expenses']]],
+    ['Manage', [['/classes', 'grid', 'Classes'], ['/import', 'upload', 'Import students'], ['/users', 'user', 'Users'], ['/settings', 'settings', 'Settings'], ['/promote', 'arrowUp', 'Promotion']]],
+  ] : [
+    [null, [['/attendance', 'attendance', 'Attendance']]],
+  ];
+%>
+<aside class="sidebar" aria-label="Sidebar">
+  <a class="sidebar-brand" href="/">
+    <% if (hasLogo) { %><img src="/logo" alt=""><% } else { %><span class="sidebar-mark"><%= fmt.initials(settings.center_name) %></span><% } %>
+    <span><%= settings.center_name %></span>
+  </a>
+  <% if (isAdmin) { %><a class="btn primary block sidebar-collect" href="/collect"><%- icon('rupee') %>Collect fee</a><% } %>
+  <nav class="sidebar-nav">
+    <% for (const [heading, items] of groups) { %>
+      <% if (heading) { %><div class="sidebar-heading"><%= heading %></div><% } %>
+      <% for (const [href, ic, label] of items) { %>
+        <a href="<%= href %>" class="<%= matches(href) ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span></a>
+      <% } %>
+    <% } %>
+  </nav>
+  <div class="sidebar-foot">
+    <a href="/account/password" class="<%= matches('/account/password') ? 'active' : '' %>"><%- icon('user') %><span><%= user.name %></span></a>
+    <form method="post" action="/logout"><button type="submit"><%- icon('logout') %><span>Sign out</span></button></form>
+  </div>
+</aside>
+<% } %>
 <header class="topbar">
   <div class="topbar-inner">
     <a class="brand" href="/"><%= settings.center_name %></a>
     <% if (user) {
-      const items = user.role === 'admin'
+      const tabs = isAdmin
         ? [['/', 'home', 'Home'], ['/students', 'users', 'Students'], ['/attendance', 'attendance', 'Attendance'], ['/payments', 'receipt', 'Payments'], ['/more', 'menu', 'More']]
         : [['/attendance', 'attendance', 'Attendance'], ['/more', 'menu', 'More']];
-      const moreSections = ['/more', '/settings', '/users', '/promote', '/account'];
-      const isActive = (href) => href === '/' ? path === '/'
-        : href === '/more' ? moreSections.some((p) => path.startsWith(p))
-        : path.startsWith(href);
+      const tabPaths = tabs.map((t) => t[0]).filter((h) => h !== '/more');
+      const tabActive = (href) => href === '/more' ? !tabPaths.some((h) => matches(h)) && path !== '/' : matches(href);
     %>
     <nav class="nav" aria-label="Main">
-      <% for (const [href, ic, label] of items) { %>
-        <a href="<%= href %>" class="<%= isActive(href) ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span></a>
+      <% for (const [href, ic, label] of tabs) { %>
+        <a href="<%= href %>" class="<%= tabActive(href) ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span></a>
       <% } %>
     </nav>
     <span class="spacer"></span>

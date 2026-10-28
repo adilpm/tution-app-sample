@@ -19,7 +19,7 @@
     <dt>Receipt no.</dt><dd><b><%= payment.receipt_no %></b></dd>
     <dt>Date</dt><dd><%= dates.dateLabel(payment.paid_on) %></dd>
     <dt>Method</dt><dd><%= payment.method %></dd>
-    <dt>For</dt><dd><% for (const m of months) { %><div><%= dates.monthLabel(m.month) %> <span class="muted">· <%= fmt.money(m.amount) %></span></div><% } %></dd>
+    <dt>For</dt><dd><% for (const l of lines) { %><div><%= l.label %> <span class="muted">· <%= fmt.money(l.amount) %></span></div><% } %></dd>
     <% if (payment.note) { %><dt>Note</dt><dd><%= payment.note %></dd><% } %>
     <dt>Collected by</dt><dd><%= payment.collected_by_name || '—' %></dd>
     <dt>Still pending</dt><dd class="<%= ledger.pending ? 'bad-text' : 'good-text' %>"><b><%= fmt.money(ledger.pending) %></b></dd>
